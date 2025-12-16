@@ -1,0 +1,23 @@
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.leaflet-container {
+  height: 100vh; /* Full Viewport Height */
+  width: 100%;
+}
+
+/* Simple Button Styling for later */
+.btn-primary {
+  background-color: black;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  font-weight: bold;
+}
