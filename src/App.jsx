@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import IndoraMap from './components/IndoraMap';
 import api from './api/axios';
+import Login from './components/Login'; // New
+import Signup from './components/Signup'; // New
 
-function CustomerHome() {
+function CustomerHome({ user, onLogout }) {
   const [pickup, setPickup] = useState(null);
   const [dropoff, setDropoff] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
@@ -66,6 +68,9 @@ function CustomerHome() {
 
   return (
     <div>
+      <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 2000 }}>
+        <button onClick={onLogout} style={{ padding: '5px 15px', borderRadius: '20px', background: 'white', border: '1px solid red', color: 'red', cursor: 'pointer' }}>Logout</button>
+      </div>
       <IndoraMap 
         pickup={pickup} setPickup={setPickup} 
         dropoff={dropoff} setDropoff={setDropoff}
@@ -131,12 +136,37 @@ function CustomerHome() {
     </div>
   );
 }
-
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showLogin, setShowLogin] = useState(true);
+
+  // Check for existing token on load
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (token) setIsLoggedIn(true);
+  }, []);
+
+  const handleLoginSuccess = (username, token) => {
+    localStorage.setItem('access_token', token);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    setIsLoggedIn(false);
+    window.location.reload(); // Reset map state
+  };
+
+  if (!isLoggedIn) {
+    return showLogin ? 
+      <Login onLoginSuccess={handleLoginSuccess} switchToSignup={() => setShowLogin(false)} /> : 
+      <Signup onSignupSuccess={() => setShowLogin(true)} switchToLogin={() => setShowLogin(true)} />;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<CustomerHome />} />
+        <Route path="/" element={<CustomerHome onLogout={handleLogout} />} />
       </Routes>
     </BrowserRouter>
   );
