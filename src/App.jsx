@@ -17,24 +17,30 @@ function CustomerHome({ user, onLogout }) {
   const [orderId, setOrderId] = useState(null);
   const [status, setStatus] = useState('requested');
 
-  const calculatePrice = async () => {
-    if (!pickup || !dropoff) return;
-    try {
-      const response = await api.post('rides/', {
-        pickup_lat: pickup[0], pickup_lng: pickup[1],
-        dropoff_lat: dropoff[0], dropoff_lng: dropoff[1],
-        pickup_address: pickupAddress,
-        dropoff_address: dropoffAddress
-      });
-      setOffer(response.data);
-      setOrderId(response.data.id);
-      setStep('finished');
-      setStatus('requested');
-    } catch (error) {
-      alert("Error connecting to server!");
+  // Inside CustomerHome in App.jsx
+const calculatePrice = async () => {
+    if (!pickup || !dropoff) {
+        alert("⚠️ Please select both Pickup and Dropoff points on the map.");
+        return;
     }
-  };
-
+    try {
+        const response = await api.post('rides/', {
+            pickup_lat: pickup[0], pickup_lng: pickup[1],
+            dropoff_lat: dropoff[0], dropoff_lng: dropoff[1],
+            pickup_address: pickupAddress,
+            dropoff_address: dropoffAddress
+        });
+        setOffer(response.data);
+        setOrderId(response.data.id);
+        setStep('finished');
+        setStatus('requested');
+    } catch (error) {
+        // IMPROVED ERROR LOGGING
+        console.error("Pricing Error Details:", error.response?.data);
+        const detail = error.response?.data?.detail || "Check your internet or login status.";
+        alert(`❌ Price Calculation Failed: ${detail}`);
+    }
+};
   // --- REVISED POLLING LOGIC ---
   useEffect(() => {
     let interval;
