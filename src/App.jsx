@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import IndoraMap from './components/IndoraMap';
 import api from './api/axios';
-import Login from './components/Login'; // New
-import Signup from './components/Signup'; // New
+import Login from './components/Login'; 
+import Signup from './components/Signup';
 
-function CustomerHome({ user, onLogout }) {
+function CustomerHome({ onLogout }) {
   const [pickup, setPickup] = useState(null);
   const [dropoff, setDropoff] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
@@ -17,12 +17,7 @@ function CustomerHome({ user, onLogout }) {
   const [orderId, setOrderId] = useState(null);
   const [status, setStatus] = useState('requested');
 
-  // Inside CustomerHome in App.jsx
 const calculatePrice = async () => {
-    if (!pickup || !dropoff) {
-        alert("⚠️ Please select both Pickup and Dropoff points on the map.");
-        return;
-    }
     try {
         const response = await api.post('rides/', {
             pickup_lat: pickup[0], pickup_lng: pickup[1],
@@ -30,18 +25,33 @@ const calculatePrice = async () => {
             pickup_address: pickupAddress,
             dropoff_address: dropoffAddress
         });
-        setOffer(response.data);
-        setOrderId(response.data.id);
-        setStep('finished');
-        setStatus('requested');
+
+        // Start Razorpay Checkout using the data from backend
+        const options = {
+            key: "rzp_test_RoJQxZI94ZIcLn", // Your Test Key
+            amount: response.data.price * 100,
+            currency: "INR",
+            name: "Indora Rides",
+            order_id: response.data.razorpay_order_id,
+            handler: async function (res) {
+                // Verify payment on backend
+                await api.post(`rides/${response.data.id}/verify_payment/`, {
+                    razorpay_order_id: res.razorpay_order_id,
+                    razorpay_payment_id: res.razorpay_payment_id,
+                    razorpay_signature: res.razorpay_signature
+                });
+                setStep('finished');
+                setOrderId(response.data.id);
+            }
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+
     } catch (error) {
-        // IMPROVED ERROR LOGGING
-        console.error("Pricing Error Details:", error.response?.data);
-        const detail = error.response?.data?.detail || "Check your internet or login status.";
-        alert(`❌ Price Calculation Failed: ${detail}`);
+        console.error("Pricing Error:", error.response?.data);
+        alert("Failed to initiate payment. Please check if you are logged in correctly.");
     }
 };
-  // --- REVISED POLLING LOGIC ---
   useEffect(() => {
     let interval;
     if (orderId && step === 'finished') {
@@ -50,17 +60,14 @@ const calculatePrice = async () => {
           const response = await api.get(`rides/${orderId}/`);
           const currentStatus = response.data.status.toLowerCase();
 
-          // 1. Update overall status
           if (currentStatus !== status) {
             setStatus(currentStatus);
           }
 
-          // 2. Update Driver Location (Option A)
           if (currentStatus === 'accepted' && response.data.driver_lat) {
             setDriverLocation([response.data.driver_lat, response.data.driver_lng]);
           }
 
-          // 3. Stop polling if trip is finished
           if (currentStatus === 'completed') {
             clearInterval(interval);
           }
@@ -77,13 +84,17 @@ const calculatePrice = async () => {
       <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 2000 }}>
         <button onClick={onLogout} style={{ padding: '5px 15px', borderRadius: '20px', background: 'white', border: '1px solid red', color: 'red', cursor: 'pointer' }}>Logout</button>
       </div>
+
       <IndoraMap 
         pickup={pickup} setPickup={setPickup} 
         dropoff={dropoff} setDropoff={setDropoff}
         driverLocation={driverLocation}
+        pickupAddress={pickupAddress}
+        dropoffAddress={dropoffAddress}
         setPickupAddress={setPickupAddress}
         setDropoffAddress={setDropoffAddress}
         step={step} 
+        setStep={setStep}
         routeGeometry={offer ? offer.route_geometry : null}
       />
       
@@ -92,38 +103,83 @@ const calculatePrice = async () => {
         background: 'white', padding: '20px', borderRadius: '10px', width: '320px',
         boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
       }}>
-        <h2>Indora Booking</h2>
+        <h2 style={{marginTop: 0}}>Indora Booking</h2>
 
-        {/* TRIP FINISHED SCREEN */}
+        {/* --- REAL-TIME ADDRESS DISPLAY SECTION --- */}
+        <div style={{ padding: '10px', background: '#f9f9f9', borderRadius: '8px', marginBottom: '15px', border: '1px solid #eee' }}>
+          <div style={{ marginBottom: '8px', borderLeft: '3px solid #27ae60', paddingLeft: '10px' }}>
+            <small style={{ color: 'gray', fontSize: '10px', display: 'block' }}>PICKUP</small>
+            <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: '#333' }}>
+              {pickupAddress || "Not set"}
+            </p>
+          </div>
+
+          <div style={{ borderLeft: '3px solid #e74c3c', paddingLeft: '10px' }}>
+            <small style={{ color: 'gray', fontSize: '10px', display: 'block' }}>DROPOFF</small>
+            <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: '#333' }}>
+              {dropoffAddress || "Not set"}
+            </p>
+          </div>
+        </div>
+        {/* --------------------------------------- */}
+
         {status === 'completed' ? (
           <div style={{textAlign: 'center'}}>
             <h2 style={{color: '#27ae60'}}>🏁 Trip Finished!</h2>
             <p>Thank you for riding with Indora.</p>
-            <div style={{fontSize: '50px', margin: '15px'}}>⭐</div>
             <button className="btn-primary" onClick={() => window.location.reload()}>Book New Ride</button>
           </div>
         ) : (
           <>
             {step === 'pickup' && (
               <div>
-                <p>📍 Set <b>Pickup</b></p>
-                <p style={{fontSize: '14px', color: '#666'}}>{pickupAddress || "Click on map..."}</p>
-                {pickup && <button className="btn-primary" onClick={() => setStep('dropoff')}>Confirm Pickup</button>}
+                <p>📍 Set your <b>Pickup</b> location</p>
+                {pickup && <button className="btn-primary" style={{width: '100%'}} onClick={() => setStep('dropoff')}>Confirm Pickup Location</button>}
               </div>
             )}
 
             {step === 'dropoff' && (
               <div>
-                <p>🏁 Set <b>Dropoff</b></p>
-                <p style={{fontSize: '14px', color: '#666'}}>{dropoffAddress || "Click on map..."}</p>
-                {dropoff && <button className="btn-primary" onClick={calculatePrice}>Calculate Price</button>}
+                <p>🏁 Search for <b>Dropoff</b></p>
+                <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Enter destination..." 
+                    value={dropoffAddress}
+                    onChange={(e) => setDropoffAddress(e.target.value)}
+                    style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', flex: 1 }}
+                  />
+                  <button 
+                    onClick={async () => {
+                      if(!dropoffAddress) return;
+                      try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropoffAddress)}`);
+                        const data = await res.json();
+                        if (data.length > 0) {
+                          const { lat, lon } = data[0];
+                          setDropoff([parseFloat(lat), parseFloat(lon)]);
+                        } else {
+                          alert("❌ Address not found.");
+                        }
+                      } catch (err) { console.error(err); }
+                    }}
+                    style={{ padding: '5px 10px', cursor: 'pointer', borderRadius: '5px', background: '#eee', border: '1px solid #ccc' }}
+                  >
+                    Search
+                  </button>
+                </div>
+                
+                {dropoff && (
+                  <button className="btn-primary" onClick={calculatePrice} style={{ width: '100%' }}>
+                    Confirm & Calculate Price
+                  </button>
+                )}
               </div>
             )}
 
             {step === 'finished' && status === 'requested' && (
               <div style={{textAlign: 'center'}}>
                 <h3>Looking for Drivers...</h3>
-                <div className="loader"></div>
                 <p>💰 Price: <b>₹{offer?.price}</b></p>
               </div>
             )}
@@ -131,8 +187,6 @@ const calculatePrice = async () => {
             {status === 'accepted' && (
               <div style={{textAlign: 'center'}}>
                 <h3 style={{color: 'green'}}>🎉 Driver Found!</h3>
-                <p>Your taxi is arriving.</p>
-                <div style={{fontSize: '40px'}}>🚖</div>
                 <p><b>OTP: 4592</b></p>
               </div>
             )}
@@ -142,11 +196,11 @@ const calculatePrice = async () => {
     </div>
   );
 }
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
 
-  // Check for existing token on load
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (token) setIsLoggedIn(true);
@@ -160,7 +214,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     setIsLoggedIn(false);
-    window.location.reload(); // Reset map state
+    window.location.reload();
   };
 
   if (!isLoggedIn) {

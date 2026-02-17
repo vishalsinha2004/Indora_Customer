@@ -1,4 +1,4 @@
-// indora_frontend/src/api/axios.js
+// src/api/axios.js
 import axios from 'axios';
 
 const api = axios.create({
@@ -8,20 +8,26 @@ const api = axios.create({
     }
 });
 
-// --- THE FIX: ADD THIS INTERCEPTOR ---
 api.interceptors.request.use((config) => {
-    // 1. Get the token we saved during login
     const token = localStorage.getItem('access_token'); 
-    
-    // 2. If it exists, add it to the Authorization header
     if (token) {
-        // Crucial: There must be a space after 'Bearer'
         config.headers.Authorization = `Bearer ${token}`; 
     }
-    
     return config;
 }, (error) => {
     return Promise.reject(error);
 });
+
+// NEW: Clear token if it's invalid (401)
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('access_token');
+            // Optional: window.location.reload(); 
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default api;
