@@ -38,18 +38,25 @@ function RoutingEngine({ pickup, dropoff }) {
   useEffect(() => {
     if (!map || !pickup || !dropoff) return;
 
+    // Create a specific router instance to override defaults
+    const myRouter = L.Routing.osrmv1({
+        serviceUrl: 'https://router.project-osrm.org/route/v1',
+        profile: 'driving'
+    });
+
     const routingControl = L.Routing.control({
       waypoints: [
         L.latLng(pickup[0], pickup[1]),
         L.latLng(dropoff[0], dropoff[1])
       ],
+      router: myRouter, // Use the instance created above
       lineOptions: {
-        styles: [{ color: '#2563eb', weight: 5 }] // Blue line
+        styles: [{ color: '#2563eb', weight: 5 }]
       },
       addWaypoints: false,
       draggableWaypoints: false,
       fitSelectedRoutes: true,
-      show: false // Hides the instruction panel
+      show: false 
     }).addTo(map);
 
     return () => map.removeControl(routingControl);
@@ -57,7 +64,6 @@ function RoutingEngine({ pickup, dropoff }) {
 
   return null;
 }
-
 // --- Component for the Current Location button ---
 function CurrentLocationButton({ setPickup, setPickupAddress }) {
   const map = useMap();

@@ -16,25 +16,27 @@ function CustomerHome({ onLogout }) {
   const [offer, setOffer] = useState(null);
   const [orderId, setOrderId] = useState(null);
   const [status, setStatus] = useState('requested');
-
 const calculatePrice = async () => {
     try {
+        // Ensure these keys (pickup_lat, etc.) match your views.py exactly
         const response = await api.post('rides/', {
-            pickup_lat: pickup[0], pickup_lng: pickup[1],
-            dropoff_lat: dropoff[0], dropoff_lng: dropoff[1],
+            pickup_lat: pickup[0], 
+            pickup_lng: pickup[1],
+            dropoff_lat: dropoff[0], 
+            dropoff_lng: dropoff[1],
             pickup_address: pickupAddress,
             dropoff_address: dropoffAddress
         });
 
-        // Start Razorpay Checkout using the data from backend
+        setOffer(response.data); // Save the price/order info
+
         const options = {
-            key: "rzp_test_RoJQxZI94ZIcLn", // Your Test Key
-            amount: response.data.price * 100,
+            key: "rzp_test_SHfqRqFecIslSG", 
+            amount: response.data.price * 100, 
             currency: "INR",
             name: "Indora Rides",
             order_id: response.data.razorpay_order_id,
             handler: async function (res) {
-                // Verify payment on backend
                 await api.post(`rides/${response.data.id}/verify_payment/`, {
                     razorpay_order_id: res.razorpay_order_id,
                     razorpay_payment_id: res.razorpay_payment_id,
@@ -48,8 +50,10 @@ const calculatePrice = async () => {
         rzp.open();
 
     } catch (error) {
-        console.error("Pricing Error:", error.response?.data);
-        alert("Failed to initiate payment. Please check if you are logged in correctly.");
+        console.error("Full Error Object:", error);
+        // This will show you exactly what the server said
+        const errorMsg = error.response?.data?.detail || error.message || "Unknown Error";
+        alert(`❌ Pricing Error: ${errorMsg}`);
     }
 };
   useEffect(() => {

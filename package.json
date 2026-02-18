@@ -13,6 +13,7 @@
     "axios": "^1.13.2",
     "leaflet": "^1.9.4",
     "leaflet-routing-machine": "^3.2.12",
+    "razorpay": "^2.9.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-leaflet": "^5.0.0",
