@@ -62,7 +62,19 @@ const AreaMarks = () => {
     const availableZones = [
         { name: "Maninagar", coords: [22.9978, 72.6009] },
         { name: "Narol", coords: [22.9733, 72.5931] },
-        { name: "Isanpur", coords: [22.9868, 72.5977] }
+        { name: "Isanpur", coords: [22.9868, 72.5977] },
+        { name: "Vastrapur", coords: [23.0225, 72.5714] },
+        { name: "Satellite", coords: [23.0280, 72.5712] },
+        { name: "Ghatlodia", coords: [23.0325, 72.5710] },
+        { name: "Bodakdev", coords: [23.0350, 72.5715] },
+        { name: "Naranpura", coords: [23.0285, 72.5718] },
+        { name: "Thaltej", coords: [23.0280, 72.5725] },
+        { name: "Prahlad Nagar", coords: [23.0288, 72.5720] },
+        { name: "Sarkhej", coords: [22.9860, 72.5710] },
+        { name: "Shilaj", coords: [22.9865, 72.5715] },
+        { name: "Gota", coords: [22.9862, 72.5712] },
+        { name: "Vejalpur", coords: [22.9867, 72.5718] },
+        { name: "Jodhpur", coords: [22.9863, 72.5714] }
     ];
 
     return availableZones.map((zone, idx) => (
