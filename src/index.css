@@ -21,3 +21,17 @@ body, html, #root {
   border-radius: 5px;
   font-weight: bold;
 }
+
+/* Add this to your App.css */
+.leaflet-container::after {
+  content: "INDORA - AREA AVAILABLE";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  font-size: 4rem;
+  color: rgba(0, 0, 0, 0.05); /* Very light grey */
+  white-space: nowrap;
+  pointer-events: none; /* Allows clicking through the text to the map */
+  z-index: 1000;
+}

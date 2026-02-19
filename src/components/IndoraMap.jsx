@@ -1,6 +1,6 @@
 // src/components/IndoraMap.jsx
-import React, { useEffect } from 'react'; // Added useEffect here
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON } from 'react-leaflet';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -11,6 +11,7 @@ import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 // Fix for default marker icons
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
 let DefaultIcon = L.icon({
     iconUrl: icon,
     shadowUrl: iconShadow,
@@ -19,6 +20,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// --- Helper: Get Address from Coords ---
 const getAddressFromCoords = async (lat, lng) => {
     try {
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
@@ -31,110 +33,149 @@ const getAddressFromCoords = async (lat, lng) => {
     }
 };
 
-// --- Component to draw the connection line ---
+// --- Component: Branding Watermark ---
+const MapWatermark = () => {
+  const map = useMap();
+  useEffect(() => {
+    const WatermarkControl = L.Control.extend({
+      onAdd: function() {
+        const div = L.DomUtil.create('div', 'map-watermark');
+        div.innerHTML = `
+          <div style="background: rgba(255, 255, 255, 0.9); padding: 8px 15px; border-radius: 20px; 
+                      border: 2px solid #2563eb; color: #2563eb; font-weight: bold; font-size: 14px;
+                      box-shadow: 0 2px 10px rgba(0,0,0,0.1); pointer-events: none;">
+            🚀 Indora Active in Ahmedabad
+          </div>
+        `;
+        return div;
+      }
+    });
+    const watermark = new WatermarkControl({ position: 'topright' });
+    watermark.addTo(map);
+    return () => watermark.remove();
+  }, [map]);
+  return null;
+};
+
+// --- Component: Area Marks (Ahmedabad Zones) ---
+const AreaMarks = () => {
+    const availableZones = [
+        { name: "Maninagar", coords: [22.9978, 72.6009] },
+        { name: "Narol", coords: [22.9733, 72.5931] },
+        { name: "Isanpur", coords: [22.9868, 72.5977] }
+    ];
+
+    return availableZones.map((zone, idx) => (
+        <React.Fragment key={idx}>
+            <CircleMarker 
+                center={zone.coords} 
+                radius={10} 
+                pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.6 }}
+            >
+                <Tooltip permanent direction="top" offset={[0, -10]}>
+                    <span style={{ fontWeight: 'bold', color: '#166534' }}>📍 {zone.name} Available</span>
+                </Tooltip>
+            </CircleMarker>
+        </React.Fragment>
+    ));
+};
+
+// --- Component: Routing Engine ---
 function RoutingEngine({ pickup, dropoff }) {
   const map = useMap();
-
   useEffect(() => {
     if (!map || !pickup || !dropoff) return;
-
-    // Create a specific router instance to override defaults
     const myRouter = L.Routing.osrmv1({
         serviceUrl: 'https://router.project-osrm.org/route/v1',
         profile: 'driving'
     });
-
     const routingControl = L.Routing.control({
-      waypoints: [
-        L.latLng(pickup[0], pickup[1]),
-        L.latLng(dropoff[0], dropoff[1])
-      ],
-      router: myRouter, // Use the instance created above
-      lineOptions: {
-        styles: [{ color: '#2563eb', weight: 5 }]
-      },
+      waypoints: [L.latLng(pickup[0], pickup[1]), L.latLng(dropoff[0], dropoff[1])],
+      router: myRouter,
+      lineOptions: { styles: [{ color: '#2563eb', weight: 5 }] },
       addWaypoints: false,
       draggableWaypoints: false,
       fitSelectedRoutes: true,
       show: false 
     }).addTo(map);
-
     return () => map.removeControl(routingControl);
   }, [map, pickup, dropoff]);
-
   return null;
 }
-// --- Component for the Current Location button ---
-function CurrentLocationButton({ setPickup, setPickupAddress }) {
+
+// --- Component: Action Buttons (No Touch Logic) ---
+function ActionButtons({ setPickup, setPickupAddress, setDropoff, setDropoffAddress, step }) {
   const map = useMap();
 
+  // Restore your working pickup logic
   const handleFetchLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
+    if (!navigator.geolocation) return alert("Geolocation not supported");
+    navigator.geolocation.getCurrentPosition(async (position) => {
         const { latitude, longitude } = position.coords;
         const coords = [latitude, longitude];
-        
         map.flyTo(coords, 15);
         setPickup(coords);
-        
         const address = await getAddressFromCoords(latitude, longitude);
         setPickupAddress(address);
-      },
-      () => alert("Unable to retrieve location.")
-    );
+    });
+  };
+
+  // Logic for Dropoff (Uses map center)
+  const handleSetDropoff = async () => {
+    const center = map.getCenter();
+    const coords = [center.lat, center.lng];
+    setDropoff(coords);
+    const address = await getAddressFromCoords(center.lat, center.lng);
+    setDropoffAddress(address);
   };
 
   return (
-    <div className="leaflet-bottom leaflet-left" style={{ marginBottom: '20px', marginLeft: '10px', zIndex: 1000 }}>
-      <div className="leaflet-control leaflet-bar">
+    <div className="leaflet-bottom leaflet-left" style={{ marginBottom: '60px', marginLeft: '10px', zIndex: 1000 }}>
+      {step === 'pickup' ? (
+        <div className="leaflet-control leaflet-bar">
+          <button 
+            onClick={handleFetchLocation} 
+            title="Use Current Location"
+            style={{ backgroundColor: 'white', width: '45px', height: '45px', border: 'none', cursor: 'pointer', fontSize: '20px', fontWeight: 'bold' }}
+          >
+            📍
+          </button>
+        </div>
+      ) : (
         <button 
-          onClick={handleFetchLocation}
-          title="Use Current Location"
-          style={{ backgroundColor: 'white', width: '40px', height: '40px', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+            onClick={handleSetDropoff}
+            style={{ 
+                backgroundColor: '#2563eb', color: 'white', padding: '10px 15px', 
+                borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)' 
+            }}
         >
-          📍
+            🏁 Set Dropoff at Center
         </button>
-      </div>
+      )}
     </div>
   );
 }
 
-function LocationSelector({ setPickup, setDropoff, setPickupAddress, setDropoffAddress, step }) {
-  useMapEvents({
-    async click(e) {
-      const { lat, lng } = e.latlng;
-      const address = await getAddressFromCoords(lat, lng);
-      if (step === 'pickup') {
-        setPickup([lat, lng]);
-        setPickupAddress(address);
-      } else if (step === 'dropoff') {
-        setDropoff([lat, lng]);
-        setDropoffAddress(address);
-      }
-    },
-  });
-  return null;
-}
-
+// --- MAIN EXPORTED COMPONENT ---
 const IndoraMap = ({ pickup, setPickup, dropoff, setDropoff, pickupAddress, dropoffAddress, setPickupAddress, setDropoffAddress, step }) => {
   return (
-    <MapContainer center={[23.0225, 72.5714]} zoom={13} style={{ height: "100vh", width: "100%" }}>
+    <MapContainer center={[22.9868, 72.5977]} zoom={13} style={{ height: "100vh", width: "100%" }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       
-      <LocationSelector 
-        setPickup={setPickup} setDropoff={setDropoff} 
-        setPickupAddress={setPickupAddress} setDropoffAddress={setDropoffAddress} 
-        step={step} 
-      />
-
-      <CurrentLocationButton setPickup={setPickup} setPickupAddress={setPickupAddress} />
+      <MapWatermark />
+      <AreaMarks />
       
-      {/* This component connects the two points */}
+      {/* LocationSelector removed: No random screen touch allowed */}
+
+      <ActionButtons 
+        setPickup={setPickup} 
+        setPickupAddress={setPickupAddress} 
+        setDropoff={setDropoff}
+        setDropoffAddress={setDropoffAddress}
+        step={step}
+      />
+      
       <RoutingEngine pickup={pickup} dropoff={dropoff} />
 
       {pickup && <Marker position={pickup}><Popup>Pickup: {pickupAddress}</Popup></Marker>}
