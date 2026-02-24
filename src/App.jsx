@@ -6,18 +6,41 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 
 function CustomerHome({ onLogout }) {
+  // --- FIX: Load state from Local Storage so it survives refresh ---
+  const savedStep = localStorage.getItem('indora_step') || 'selection';
+  const savedOrderId = localStorage.getItem('indora_order_id') || null;
+
+  const [step, setStep] = useState(savedStep);
+  const [orderId, setOrderId] = useState(savedOrderId);
+  // ----------------------------------------------------------------
+
   const [pickup, setPickup] = useState(null);
   const [dropoff, setDropoff] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
+  const [driverName, setDriverName] = useState(null); 
+  const [rating, setRating] = useState(0);            
+  const [feedback, setFeedback] = useState("");       
+  const [isRated, setIsRated] = useState(false);      
 
-  // Step starts at 'selection' (Porter Style)
-  const [step, setStep] = useState('selection');
   const [offer, setOffer] = useState(null);
-  const [orderId, setOrderId] = useState(null);
   const [status, setStatus] = useState('requested');
   const [vehicleType, setVehicleType] = useState(null);
+
+  // --- FIX: Save state to Local Storage whenever it changes ---
+  useEffect(() => {
+    localStorage.setItem('indora_step', step);
+  }, [step]);
+
+  useEffect(() => {
+    if (orderId) {
+      localStorage.setItem('indora_order_id', orderId);
+    } else {
+      localStorage.removeItem('indora_order_id');
+    }
+  }, [orderId]);
+  // ------------------------------------------------------------
 
   const services = [
     { id: '2-wheeler', name: '2 Wheeler', icon: '🏍️', active: true, desc: 'Fast & Pocket Friendly' },
@@ -60,8 +83,8 @@ function CustomerHome({ onLogout }) {
             razorpay_payment_id: res.razorpay_payment_id,
             razorpay_signature: res.razorpay_signature
           });
-          setStep('finished');
-          setOrderId(response.data.id);
+          setOrderId(response.data.id); // Triggers localStorage save
+          setStep('finished');          // Triggers localStorage save
         }
       };
       const rzp = new window.Razorpay(options);
@@ -79,16 +102,37 @@ function CustomerHome({ onLogout }) {
         try {
           const response = await api.get(`rides/${orderId}/`);
           const currentStatus = response.data.status.toLowerCase();
+          
           if (currentStatus !== status) setStatus(currentStatus);
-          if (currentStatus === 'accepted' && response.data.driver_lat) {
-            setDriverLocation([response.data.driver_lat, response.data.driver_lng]);
+          
+          if ((currentStatus === 'accepted' || currentStatus === 'completed')) {
+            if (response.data.driver_lat) setDriverLocation([response.data.driver_lat, response.data.driver_lng]);
+            if (response.data.driver_name) setDriverName(response.data.driver_name);
+            
+            // IF THE RIDE IS ALREADY RATED, FETCH AND SHOW THE RATING
+            if (response.data.rating) {
+              setIsRated(true);
+              setRating(response.data.rating);
+              if (response.data.feedback) setFeedback(response.data.feedback);
+            }
           }
+          
           if (currentStatus === 'completed') clearInterval(interval);
         } catch (error) { console.error("Polling Error:", error); }
       }, 3000);
     }
     return () => clearInterval(interval);
   }, [orderId, step, status]);
+
+  const submitRating = async () => {
+    if (rating === 0) return alert("Please select a star rating");
+    try {
+      await api.post(`rides/${orderId}/rate_driver/`, { rating: rating, feedback: feedback });
+      setIsRated(true);
+    } catch (error) {
+      console.error("Rating Error:", error);
+    }
+  };
 
   return (
     <div style={{ height: '100vh', width: '100vw', position: 'relative', background: '#f8f9fa' }}>
@@ -132,7 +176,10 @@ function CustomerHome({ onLogout }) {
         <>
           <div style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 2000 }}>
              <button 
-                onClick={() => setStep('selection')} 
+                onClick={() => {
+                  setStep('selection');
+                  setOrderId(null); // FIX: Clear ride if they hit back manually
+                }} 
                 style={{ background: 'white', border: 'none', padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
              >
                ← Back
@@ -165,8 +212,58 @@ function CustomerHome({ onLogout }) {
 
             {status === 'completed' ? (
               <div style={{ textAlign: 'center' }}>
-                <h2 style={{ color: '#27ae60' }}>🏁 Trip Finished!</h2>
-                <button className="btn-primary" style={{width:'100%'}} onClick={() => window.location.reload()}>Book New Ride</button>
+                <h2 style={{ color: '#27ae60', margin: '10px 0' }}>🏁 Trip Finished!</h2>
+                
+                {/* Display Driver Name */}
+                {driverName && <p style={{ fontSize: '18px', margin: '5px 0' }}>Driver: <b>{driverName}</b></p>}
+                
+                {/* Rating UI */}
+                {!isRated ? (
+                  <div style={{ margin: '20px 0', padding: '15px', background: '#f8f9fa', borderRadius: '15px' }}>
+                    <h4 style={{ margin: '0 0 10px 0' }}>How was your ride?</h4>
+                    
+                    {/* Stars */}
+                    <div style={{ fontSize: '30px', cursor: 'pointer', marginBottom: '10px' }}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <span 
+                          key={star} 
+                          onClick={() => setRating(star)}
+                          style={{ color: star <= rating ? '#f1c40f' : '#ddd', transition: 'color 0.2s' }}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+
+                    <textarea 
+                      placeholder="Leave feedback for your driver..." 
+                      value={feedback}
+                      onChange={(e) => setFeedback(e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '15px', resize: 'none', height: '60px' }}
+                    />
+                    <button className="btn-primary" style={{ width: '100%', padding: '10px', background: '#2563eb', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }} onClick={submitRating}>Submit Feedback</button>
+                  </div>
+                ) : (
+                  <div style={{ margin: '20px 0', padding: '15px', background: '#e8f5e9', borderRadius: '15px', color: '#2e7d32' }}>
+                    <h4 style={{ margin: '0 0 5px 0' }}>Thank you for your feedback! ✓</h4>
+                    <div style={{ fontSize: '24px', color: '#f1c40f' }}>
+                      {'★'.repeat(rating)}{'☆'.repeat(5 - rating)}
+                    </div>
+                    {feedback && <p style={{ margin: '5px 0 0 0', fontStyle: 'italic', color: '#555' }}>"{feedback}"</p>}
+                  </div>
+                )}
+
+                <button 
+                   style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: '#ddd', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }} 
+                   onClick={() => {
+                     // FIX: Clear memory when booking a new ride
+                     localStorage.removeItem('indora_step');
+                     localStorage.removeItem('indora_order_id');
+                     window.location.reload();
+                   }}
+                >
+                  Book New Ride
+                </button>
               </div>
             ) : (
               <>
@@ -178,7 +275,7 @@ function CustomerHome({ onLogout }) {
                 </div>
 
                 {step === 'pickup' && (
-                  <button className="btn-primary" style={{ width: '100%' }} onClick={() => setStep('dropoff')}>
+                  <button className="btn-primary" style={{ width: '100%', padding: '10px', background: '#2563eb', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setStep('dropoff')}>
                     Confirm Pickup Location
                   </button>
                 )}
@@ -199,10 +296,10 @@ function CustomerHome({ onLogout }) {
                           const data = await res.json();
                           if (data.length > 0) setDropoff([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
                         }}
-                        style={{ padding: '10px', borderRadius: '10px', background: '#eee', border: 'none' }}
+                        style={{ padding: '10px', borderRadius: '10px', background: '#eee', border: 'none', cursor: 'pointer' }}
                       >🔍</button>
                     </div>
-                    {dropoff && <button className="btn-primary" onClick={calculatePrice} style={{ width: '100%' }}>Book Now</button>}
+                    {dropoff && <button className="btn-primary" onClick={calculatePrice} style={{ width: '100%', padding: '10px', background: '#2563eb', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Book Now</button>}
                   </div>
                 )}
 
@@ -210,13 +307,14 @@ function CustomerHome({ onLogout }) {
                   <div style={{ textAlign: 'center', padding: '10px' }}>
                     <div className="loader" style={{ marginBottom: '10px' }}></div>
                     <h3 style={{ margin: 0 }}>Finding Drivers...</h3>
-                    <p>Estimated Price: <b>₹{offer?.price}</b></p>
+                    <p>Estimated Price: <b>₹{offer?.price || '...'}</b></p>
                   </div>
                 )}
 
                 {status === 'accepted' && (
                   <div style={{ textAlign: 'center', background: '#f0fff4', padding: '15px', borderRadius: '10px' }}>
                     <h3 style={{ color: 'green', margin: '0 0 5px 0' }}>Driver Found!</h3>
+                    {driverName && <p style={{ fontSize: '18px', margin: '5px 0' }}>Your driver: <b>{driverName}</b></p>}
                     <p style={{ margin: 0 }}>Give OTP: <b style={{ fontSize: '20px' }}>4592</b></p>
                   </div>
                 )}
@@ -245,7 +343,10 @@ function App() {
   };
 
   const handleLogout = () => {
+    // FIX: Clear the ride memory if the user logs out
     localStorage.removeItem('access_token');
+    localStorage.removeItem('indora_step');
+    localStorage.removeItem('indora_order_id');
     setIsLoggedIn(false);
     window.location.reload();
   };
