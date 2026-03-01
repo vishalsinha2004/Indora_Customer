@@ -4,6 +4,7 @@ import IndoraMap from './components/IndoraMap';
 import api from './api/axios';
 import Login from './components/Login'; 
 import Signup from './components/Signup';
+import io from 'socket.io-client';
 
 // --- CUSTOM CLAYMORPHISM SVG ICONS ---
 const Icons = {
@@ -45,7 +46,10 @@ function CustomerHome({ onLogout }) {
   const [driverLocation, setDriverLocation] = useState(null);
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
-  const [driverName, setDriverName] = useState(null); 
+  
+  const [driverName, setDriverName] = useState(""); 
+  const [driverPhone, setDriverPhone] = useState(""); 
+  
   const [rating, setRating] = useState(0);            
   const [feedback, setFeedback] = useState("");       
   const [isRated, setIsRated] = useState(false);      
@@ -83,10 +87,8 @@ function CustomerHome({ onLogout }) {
   const calculatePrice = async () => {
     try {
       const response = await api.post('rides/', {
-        pickup_lat: pickup[0], 
-        pickup_lng: pickup[1],
-        dropoff_lat: dropoff[0], 
-        dropoff_lng: dropoff[1],
+        pickup_lat: pickup[0], pickup_lng: pickup[1],
+        dropoff_lat: dropoff[0], dropoff_lng: dropoff[1],
         pickup_address: pickupAddress,
         dropoff_address: dropoffAddress,
         vehicle_type: vehicleType
@@ -118,29 +120,48 @@ function CustomerHome({ onLogout }) {
     }
   };
 
+  // --- BULLETPROOF UPDATE LOGIC ---
   useEffect(() => {
-    let interval;
-    if (orderId && step === 'finished') {
-      interval = setInterval(async () => {
-        try {
-          const response = await api.get(`rides/${orderId}/`);
-          const currentStatus = response.data.status.toLowerCase();
-          if (currentStatus !== status) setStatus(currentStatus);
-          if ((currentStatus === 'accepted' || currentStatus === 'completed')) {
-            if (response.data.driver_lat) setDriverLocation([response.data.driver_lat, response.data.driver_lng]);
-            if (response.data.driver_name) setDriverName(response.data.driver_name);
-            if (response.data.rating) {
-              setIsRated(true);
-              setRating(response.data.rating);
-              if (response.data.feedback) setFeedback(response.data.feedback);
-            }
-          }
-          if (currentStatus === 'completed') clearInterval(interval);
-        } catch (error) { console.error("Polling Error:", error); }
-      }, 3000);
-    }
-    return () => clearInterval(interval);
-  }, [orderId, step, status]);
+    if (!orderId || step !== 'finished') return;
+
+    const socket = io('http://localhost:8000'); 
+    socket.emit('join_order', { order_id: orderId });
+
+    const fetchCurrentStatus = async () => {
+      try {
+        const response = await api.get(`rides/${orderId}/`);
+        const currentStatus = response.data.status.toLowerCase();
+        
+        setStatus(currentStatus);
+        
+        // Safely set driver details
+        if (response.data.driver_name) setDriverName(response.data.driver_name);
+        if (response.data.driver_phone) setDriverPhone(response.data.driver_phone);
+        if (response.data.driver_lat) setDriverLocation([response.data.driver_lat, response.data.driver_lng]);
+        
+        // Handle completed state ratings
+        if (response.data.rating) {
+          setIsRated(true);
+          setRating(response.data.rating);
+          setFeedback(response.data.feedback || "");
+        }
+      } catch (error) { 
+        console.error("Error fetching order status:", error); 
+      }
+    };
+
+    fetchCurrentStatus();
+    socket.on('ride_accepted_event', fetchCurrentStatus);
+    socket.on('ride_completed_event', fetchCurrentStatus);
+    const interval = setInterval(fetchCurrentStatus, 3000); // Failsafe polling
+
+    return () => {
+      clearInterval(interval);
+      socket.off('ride_accepted_event');
+      socket.off('ride_completed_event');
+      socket.disconnect();
+    };
+  }, [orderId, step]);
 
   const submitRating = async () => {
     if (rating === 0) return alert("Please select a star rating");
@@ -227,32 +248,114 @@ function CustomerHome({ onLogout }) {
                 </span>
             </div>
 
-            {status === 'completed' ? (
-              <div className="text-center">
-                <h2 className="text-3xl font-black text-green-500 mb-2 italic">🏁 Trip Finished!</h2>
-                {driverName && <p className="text-lg font-bold text-slate-600 mb-6">Driver: {driverName}</p>}
+            {/* --- STATE 1: PICKUP & DROPOFF --- */}
+            {status !== 'completed' && (
+              <div className="space-y-5 mb-8">
+                 <div className="relative pl-6 border-l-4 border-green-400">
+                   <div className="text-[10px] font-black text-green-500 uppercase tracking-widest">Pickup</div>
+                   <div className="text-sm font-black text-slate-700 line-clamp-1 truncate">{pickupAddress || "Select on map..."}</div>
+                 </div>
+                 <div className="relative pl-6 border-l-4 border-red-400">
+                   <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">Dropoff</div>
+                   <div className="text-sm font-black text-slate-700 line-clamp-1 truncate">{dropoffAddress || "Select on map..."}</div>
+                 </div>
+              </div>
+            )}
+
+            {step === 'pickup' && (
+              <button className="w-full p-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-[8px_8px_20px_rgba(37,99,235,0.3),inset_-4px_-4px_8px_rgba(0,0,0,0.2)] hover:bg-blue-700 active:scale-95 transition-all" onClick={() => setStep('dropoff')}>
+                Confirm Pickup
+              </button>
+            )}
+
+            {step === 'dropoff' && (
+              <div className="space-y-4">
+                <div className="flex gap-2 p-2 bg-slate-50 rounded-2xl shadow-inner border border-slate-100">
+                  <input 
+                    type="text" 
+                    placeholder="Search destination..." 
+                    value={dropoffAddress}
+                    onChange={(e) => setDropoffAddress(e.target.value)}
+                    className="bg-transparent border-none flex-1 p-3 outline-none font-black text-slate-700 placeholder:text-slate-300"
+                  />
+                  <button 
+                    onClick={async () => {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropoffAddress)}`);
+                      const data = await res.json();
+                      if (data.length > 0) setDropoff([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+                    }}
+                    className="p-3 bg-white rounded-xl shadow-md text-xl"
+                  >🔍</button>
+                </div>
+                {dropoff && (
+                  <button className="w-full p-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl active:scale-95 transition-all" onClick={calculatePrice}>
+                    Book Now
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* --- STATE 2: FINDING DRIVERS --- */}
+            {step === 'finished' && status === 'requested' && (
+              <div className="text-center py-6">
+                <div className="w-14 h-14 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                <h3 className="font-black text-2xl text-slate-800">Finding Drivers...</h3>
+                <p className="text-blue-600 font-black text-3xl mt-2 tracking-tighter">₹{offer?.price || '---'}</p>
+              </div>
+            )}
+
+            {/* --- STATE 3: DRIVER ACCEPTED --- */}
+            {status === 'accepted' && (
+              <div className="p-8 bg-green-50 rounded-[40px] shadow-inner border border-green-100 text-center animate-pulse w-full">
+                <h3 className="text-green-600 font-black text-2xl">Driver Found!</h3>
+                
+                <div className="mt-4 p-4 bg-white rounded-xl shadow-sm border border-slate-100 w-full text-center">
+                  <p className="font-bold text-slate-600 text-lg">Driver: {driverName || "Your Driver"}</p>
+                  <p className="font-bold text-blue-600">📞 {driverPhone || "No phone provided"}</p>
+                </div>
+                
+                <div className="mt-4 p-4 bg-white rounded-2xl shadow-md inline-block">
+                   <span className="text-xs font-black text-slate-400 block mb-1 uppercase tracking-widest">Your OTP</span>
+                   <span className="text-4xl font-black text-slate-900 tracking-widest">4592</span>
+                </div>
+              </div>
+            )}
+
+            {/* --- STATE 4: RIDE COMPLETED (RATING) --- */}
+            {status === 'completed' && (
+              <div className="text-center w-full">
+                <h2 className="text-3xl font-black text-green-500 mb-4 italic">🏁 Trip Finished!</h2>
+                
+                <div className="mb-6 p-4 bg-white rounded-2xl shadow-sm border border-slate-100">
+                  <p className="text-lg font-bold text-slate-600">Driver: {driverName || "Your Driver"}</p>
+                  <p className="text-md font-bold text-blue-600">📞 {driverPhone || "No phone provided"}</p>
+                </div>
                 
                 {!isRated ? (
-                  <div className="mb-6 p-6 bg-slate-50 rounded-[30px] shadow-inner">
+                  <div className="mb-6 p-6 bg-slate-50 rounded-[30px] shadow-inner text-center">
                     <h4 className="font-black text-slate-700 mb-4">How was your ride?</h4>
                     <div className="flex justify-center gap-2 mb-6">
                       {[1, 2, 3, 4, 5].map(star => (
-                        <span 
+                        <button 
                           key={star} 
+                          type="button"
                           onClick={() => setRating(star)}
-                          className={`text-4xl cursor-pointer transition-all hover:scale-125 ${star <= rating ? 'text-yellow-400 drop-shadow-md' : 'text-slate-200'}`}
+                          className={`text-5xl transition-all hover:scale-125 focus:outline-none ${star <= rating ? 'text-yellow-400 drop-shadow-md' : 'text-slate-200'}`}
                         >
                           ★
-                        </span>
+                        </button>
                       ))}
                     </div>
                     <textarea 
                       placeholder="Leave feedback..." 
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
-                      className="w-full p-4 rounded-2xl bg-white border-none shadow-inner outline-none h-24 text-slate-600 font-bold placeholder:text-slate-300 resize-none"
+                      className="w-full p-4 rounded-2xl bg-white border border-slate-200 shadow-inner outline-none h-24 text-slate-600 font-bold placeholder:text-slate-300 resize-none"
                     />
-                    <button onClick={submitRating} className="w-full mt-4 p-5 rounded-2xl bg-blue-600 text-white font-black shadow-[4px_4px_10px_rgba(37,99,235,0.4),inset_-4px_-4px_8px_rgba(0,0,0,0.2)] active:scale-95 transition-all">
+                    <button 
+                      onClick={submitRating} 
+                      className="w-full mt-4 p-5 rounded-2xl bg-blue-600 text-white font-black shadow-[4px_4px_10px_rgba(37,99,235,0.4),inset_-4px_-4px_8px_rgba(0,0,0,0.2)] active:scale-95 transition-all"
+                    >
                       Submit Feedback
                     </button>
                   </div>
@@ -263,78 +366,14 @@ function CustomerHome({ onLogout }) {
                 )}
 
                 <button 
-                   className="w-full p-4 rounded-2xl bg-slate-200 text-slate-700 font-black shadow-clay-btn active:scale-95 transition-all" 
+                   className="w-full p-4 rounded-2xl bg-slate-200 text-slate-700 font-black hover:bg-slate-300 active:scale-95 transition-all shadow-clay-btn" 
                    onClick={() => { localStorage.removeItem('indora_step'); localStorage.removeItem('indora_order_id'); window.location.reload(); }}
                 >
                   New Booking
                 </button>
               </div>
-            ) : (
-              <>
-                <div className="space-y-5 mb-8">
-                   <div className="relative pl-6 border-l-4 border-green-400">
-                     <div className="text-[10px] font-black text-green-500 uppercase tracking-widest">Pickup</div>
-                     <div className="text-sm font-black text-slate-700 line-clamp-1 truncate">{pickupAddress || "Select on map..."}</div>
-                   </div>
-                   <div className="relative pl-6 border-l-4 border-red-400">
-                     <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">Dropoff</div>
-                     <div className="text-sm font-black text-slate-700 line-clamp-1 truncate">{dropoffAddress || "Select on map..."}</div>
-                   </div>
-                </div>
-
-                {step === 'pickup' && (
-                  <button className="w-full p-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-[8px_8px_20px_rgba(37,99,235,0.3),inset_-4px_-4px_8px_rgba(0,0,0,0.2)] hover:bg-blue-700 active:scale-95 transition-all" onClick={() => setStep('dropoff')}>
-                    Confirm Pickup
-                  </button>
-                )}
-
-                {step === 'dropoff' && (
-                  <div className="space-y-4">
-                    <div className="flex gap-2 p-2 bg-slate-50 rounded-2xl shadow-inner border border-slate-100">
-                      <input 
-                        type="text" 
-                        placeholder="Search destination..." 
-                        value={dropoffAddress}
-                        onChange={(e) => setDropoffAddress(e.target.value)}
-                        className="bg-transparent border-none flex-1 p-3 outline-none font-black text-slate-700 placeholder:text-slate-300"
-                      />
-                      <button 
-                        onClick={async () => {
-                          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropoffAddress)}`);
-                          const data = await res.json();
-                          if (data.length > 0) setDropoff([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
-                        }}
-                        className="p-3 bg-white rounded-xl shadow-md text-xl"
-                      >🔍</button>
-                    </div>
-                    {dropoff && (
-                      <button className="w-full p-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl active:scale-95 transition-all" onClick={calculatePrice}>
-                        Book Now
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {step === 'finished' && (
-                  <div className="text-center py-6">
-                    <div className="w-14 h-14 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                    <h3 className="font-black text-2xl text-slate-800">Finding Drivers...</h3>
-                    <p className="text-blue-600 font-black text-3xl mt-2 tracking-tighter">₹{offer?.price || '---'}</p>
-                  </div>
-                )}
-
-                {status === 'accepted' && (
-                  <div className="p-8 bg-green-50 rounded-[40px] shadow-inner border border-green-100 text-center animate-pulse">
-                    <h3 className="text-green-600 font-black text-2xl">Driver Found!</h3>
-                    {driverName && <p className="font-bold text-slate-600 mt-2">Driver: {driverName}</p>}
-                    <div className="mt-4 p-4 bg-white rounded-2xl shadow-md inline-block">
-                       <span className="text-xs font-black text-slate-400 block mb-1 uppercase tracking-widest">Your OTP</span>
-                       <span className="text-4xl font-black text-slate-900 tracking-widest">4592</span>
-                    </div>
-                  </div>
-                )}
-              </>
             )}
+
           </div>
         </>
       )}
