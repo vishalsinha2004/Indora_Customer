@@ -20,6 +20,13 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// --- ADDED: Custom Car Icon for Driver ---
+const carIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/741/741407.png',
+    iconSize: [35, 35],
+    iconAnchor: [17, 17],
+});
+
 // --- Helper: SVGs for Claymorphism UI ---
 const MapIcons = {
     Location: () => (
@@ -110,12 +117,12 @@ function RoutingEngine({ pickup, dropoff }) {
   return null;
 }
 
-// --- Component: Action Buttons (Fixing Pickup Logic) ---
+// --- Component: Action Buttons ---
 function ActionButtons({ setPickup, setPickupAddress, setDropoff, setDropoffAddress, step }) {
   const map = useMap();
 
   const handleFetchLocation = () => {
-    console.log("Attempting to fetch location..."); // Debug log
+    console.log("Attempting to fetch location...");
     if (!navigator.geolocation) {
         return alert("Geolocation is not supported by your browser");
     }
@@ -168,7 +175,8 @@ function ActionButtons({ setPickup, setPickupAddress, setDropoff, setDropoffAddr
   );
 }
 
-const IndoraMap = ({ pickup, setPickup, dropoff, setDropoff, pickupAddress, dropoffAddress, setPickupAddress, setDropoffAddress, step }) => {
+// --- MAIN COMPONENT (Added driverLocation) ---
+const IndoraMap = ({ pickup, setPickup, dropoff, setDropoff, pickupAddress, dropoffAddress, setPickupAddress, setDropoffAddress, step, driverLocation }) => {
   return (
     <MapContainer center={[22.9868, 72.5977]} zoom={13} style={{ height: "100vh", width: "100%" }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -182,8 +190,16 @@ const IndoraMap = ({ pickup, setPickup, dropoff, setDropoff, pickupAddress, drop
         step={step}
       />
       <RoutingEngine pickup={pickup} dropoff={dropoff} />
+      
       {pickup && <Marker position={pickup}><Popup>Pickup: {pickupAddress}</Popup></Marker>}
       {dropoff && <Marker position={dropoff}><Popup>Dropoff: {dropoffAddress}</Popup></Marker>}
+      
+      {/* --- ADDED: Real-time Driver Marker --- */}
+      {driverLocation && driverLocation[0] && (
+          <Marker position={driverLocation} icon={carIcon}>
+              <Popup>Your Driver is here!</Popup>
+          </Marker>
+      )}
     </MapContainer>
   );
 };

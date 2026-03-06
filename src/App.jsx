@@ -84,7 +84,8 @@ function CustomerHome({ onLogout }) {
     }
   };
 
-  const calculatePrice = async () => {
+  // --- NEW: STEP 1 - GET PRICE FROM BACKEND ---
+  const fetchPrice = async () => {
     try {
       const response = await api.post('rides/', {
         pickup_lat: pickup[0], pickup_lng: pickup[1],
@@ -93,31 +94,36 @@ function CustomerHome({ onLogout }) {
         dropoff_address: dropoffAddress,
         vehicle_type: vehicleType
       });
-
+      // Set the offer state so the UI updates to show the price box
       setOffer(response.data);
-
-      const options = {
-        key: "rzp_test_SHfqRqFecIslSG", 
-        amount: response.data.price * 100, 
-        currency: "INR",
-        name: "Indora Rides",
-        order_id: response.data.razorpay_order_id,
-        handler: async function (res) {
-          await api.post(`rides/${response.data.id}/verify_payment/`, {
-            razorpay_order_id: res.razorpay_order_id,
-            razorpay_payment_id: res.razorpay_payment_id,
-            razorpay_signature: res.razorpay_signature
-          });
-          setOrderId(response.data.id);
-          setStep('finished');
-        }
-      };
-      const rzp = new window.Razorpay(options);
-      rzp.open();
     } catch (error) {
       console.error("Pricing Error:", error);
       alert(`❌ Error: ${error.response?.data?.detail || "Could not calculate price"}`);
     }
+  };
+
+  // --- NEW: STEP 2 - PAY AND BOOK RIDE ---
+  const payAndBook = async () => {
+    if (!offer) return;
+
+    const options = {
+      key: "rzp_test_SHfqRqFecIslSG", 
+      amount: offer.price * 100, 
+      currency: "INR",
+      name: "Indora Rides",
+      order_id: offer.razorpay_order_id,
+      handler: async function (res) {
+        await api.post(`rides/${offer.id}/verify_payment/`, {
+          razorpay_order_id: res.razorpay_order_id,
+          razorpay_payment_id: res.razorpay_payment_id,
+          razorpay_signature: res.razorpay_signature
+        });
+        setOrderId(offer.id);
+        setStep('finished');
+      }
+    };
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   };
 
   // --- BULLETPROOF UPDATE LOGIC ---
@@ -153,12 +159,21 @@ function CustomerHome({ onLogout }) {
     fetchCurrentStatus();
     socket.on('ride_accepted_event', fetchCurrentStatus);
     socket.on('ride_completed_event', fetchCurrentStatus);
+
+    // Listen for the moving car
+    socket.on('driver_location_update', (data) => {
+        if (data.lat && data.lng) {
+            setDriverLocation([data.lat, data.lng]);
+        }
+    });
+
     const interval = setInterval(fetchCurrentStatus, 3000); // Failsafe polling
 
     return () => {
       clearInterval(interval);
       socket.off('ride_accepted_event');
       socket.off('ride_completed_event');
+      socket.off('driver_location_update');
       socket.disconnect();
     };
   }, [orderId, step]);
@@ -216,7 +231,7 @@ function CustomerHome({ onLogout }) {
         <>
           <div className="absolute top-6 left-6 z-[2000]">
              <button 
-                onClick={() => { setStep('selection'); setOrderId(null); }} 
+                onClick={() => { setStep('selection'); setOrderId(null); setOffer(null); setDropoff(null); }} 
                 className="bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl font-black text-slate-700 shadow-[8px_8px_16px_rgba(0,0,0,0.1),inset_-4px_-4px_8px_rgba(255,255,255,0.8)] hover:bg-white transition-all flex items-center gap-2"
              >
                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
@@ -268,29 +283,53 @@ function CustomerHome({ onLogout }) {
               </button>
             )}
 
+            {/* --- NEW UI FOR PRICE FETCHING AND BOOKING --- */}
             {step === 'dropoff' && (
               <div className="space-y-4">
+                {/* Search Input */}
                 <div className="flex gap-2 p-2 bg-slate-50 rounded-2xl shadow-inner border border-slate-100">
                   <input 
                     type="text" 
                     placeholder="Search destination..." 
                     value={dropoffAddress}
-                    onChange={(e) => setDropoffAddress(e.target.value)}
+                    onChange={(e) => { 
+                      setDropoffAddress(e.target.value); 
+                      setOffer(null); // Clear old price if they type a new address
+                      setDropoff(null); 
+                    }}
                     className="bg-transparent border-none flex-1 p-3 outline-none font-black text-slate-700 placeholder:text-slate-300"
                   />
                   <button 
                     onClick={async () => {
                       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropoffAddress)}`);
                       const data = await res.json();
-                      if (data.length > 0) setDropoff([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+                      if (data.length > 0) {
+                        setDropoff([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+                        setOffer(null); // Clear old price when a new pin is dropped
+                      }
                     }}
                     className="p-3 bg-white rounded-xl shadow-md text-xl"
                   >🔍</button>
                 </div>
-                {dropoff && (
-                  <button className="w-full p-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl active:scale-95 transition-all" onClick={calculatePrice}>
-                    Book Now
+                
+                {/* 1. Calculate Fare Button (Shows when dropoff is set, but price isn't fetched) */}
+                {dropoff && !offer && (
+                  <button className="w-full p-5 rounded-2xl bg-slate-800 text-white font-black text-lg shadow-xl active:scale-95 transition-all" onClick={fetchPrice}>
+                    Calculate Fare
                   </button>
+                )}
+
+                {/* 2. Price Display & Book Now Button (Shows after fetchPrice completes) */}
+                {offer && (
+                  <div className="animate-fade-in-up mt-2">
+                    <div className="bg-green-50 rounded-2xl p-4 mb-4 border border-green-200 text-center shadow-inner">
+                       <p className="text-xs font-black text-green-600 uppercase tracking-widest mb-1">Estimated Fare</p>
+                       <p className="text-4xl font-black text-slate-800 tracking-tighter">₹{offer.price}</p>
+                    </div>
+                    <button className="w-full p-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-[8px_8px_20px_rgba(37,99,235,0.3),inset_-4px_-4px_8px_rgba(0,0,0,0.2)] hover:bg-blue-700 active:scale-95 transition-all" onClick={payAndBook}>
+                      Pay & Book Now
+                    </button>
+                  </div>
                 )}
               </div>
             )}
