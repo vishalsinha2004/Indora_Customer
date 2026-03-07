@@ -33,7 +33,6 @@ const Icons = {
       <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
     </svg>
   ),
-  // New Nav Icons
   NavHome: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   NavOrders: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
   NavProfile: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
@@ -42,8 +41,21 @@ const Icons = {
 
 function CustomerHome({ onLogout }) {
   // Navigation State
-  const [currentTab, setCurrentTab] = useState('home'); // 'home', 'orders', 'profile', 'help'
+  const [currentTab, setCurrentTab] = useState('home'); 
   
+  // Profile Nested Navigation State
+  const [profileView, setProfileView] = useState('main'); 
+  
+  // FAQ Expand State
+  const [expandedFaq, setExpandedFaq] = useState(null);
+  
+  // User Info State
+  const [userInfo, setUserInfo] = useState({
+    name: localStorage.getItem('indora_customer_username') || "Customer",
+    phone: localStorage.getItem('indora_customer_phone') || "+91 9876543210",
+    email: localStorage.getItem('indora_customer_email') || "customer@indora.in"
+  });
+
   // Booking State
   const savedStep = localStorage.getItem('indora_step') || 'selection';
   const savedOrderId = localStorage.getItem('indora_order_id') || null;
@@ -66,7 +78,6 @@ function CustomerHome({ onLogout }) {
   const [status, setStatus] = useState('requested');
   const [vehicleType, setVehicleType] = useState(null);
 
-  // User History State
   const [orderHistory, setOrderHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -82,13 +93,17 @@ function CustomerHome({ onLogout }) {
     }
   }, [orderId]);
 
-  // Fetch Order History when 'orders' tab is opened
+  // Reset views when changing main tabs
+  useEffect(() => {
+    if (currentTab !== 'profile') setProfileView('main');
+    if (currentTab !== 'help') setExpandedFaq(null);
+  }, [currentTab]);
+
   useEffect(() => {
     if (currentTab === 'orders') {
       setLoadingHistory(true);
       api.get('rides/')
         .then(res => {
-          // Sort newest first
           const sorted = res.data.sort((a, b) => b.id - a.id);
           setOrderHistory(sorted);
         })
@@ -122,14 +137,12 @@ function CustomerHome({ onLogout }) {
       });
       setOffer(response.data);
     } catch (error) {
-      console.error("Pricing Error:", error);
       alert(`❌ Error: ${error.response?.data?.detail || "Could not calculate price"}`);
     }
   };
 
   const payAndBook = async () => {
     if (!offer) return;
-
     const options = {
       key: "rzp_test_SHfqRqFecIslSG", 
       amount: offer.price * 100, 
@@ -152,16 +165,13 @@ function CustomerHome({ onLogout }) {
 
   useEffect(() => {
     if (!orderId || step !== 'finished') return;
-
     const socket = io('http://localhost:8000'); 
     socket.emit('join_order', { order_id: orderId });
 
     const fetchCurrentStatus = async () => {
       try {
         const response = await api.get(`rides/${orderId}/`);
-        const currentStatus = response.data.status.toLowerCase();
-        
-        setStatus(currentStatus);
+        setStatus(response.data.status.toLowerCase());
         
         if (response.data.driver_name) setDriverName(response.data.driver_name);
         if (response.data.driver_phone) setDriverPhone(response.data.driver_phone);
@@ -172,19 +182,14 @@ function CustomerHome({ onLogout }) {
           setRating(response.data.rating);
           setFeedback(response.data.feedback || "");
         }
-      } catch (error) { 
-        console.error("Error fetching order status:", error); 
-      }
+      } catch (error) {}
     };
 
     fetchCurrentStatus();
     socket.on('ride_accepted_event', fetchCurrentStatus);
     socket.on('ride_completed_event', fetchCurrentStatus);
-
     socket.on('driver_location_update', (data) => {
-        if (data.lat && data.lng) {
-            setDriverLocation([data.lat, data.lng]);
-        }
+        if (data.lat && data.lng) setDriverLocation([data.lat, data.lng]);
     });
 
     const interval = setInterval(fetchCurrentStatus, 3000); 
@@ -203,12 +208,17 @@ function CustomerHome({ onLogout }) {
     try {
       await api.post(`rides/${orderId}/rate_driver/`, { rating: rating, feedback: feedback });
       setIsRated(true);
-    } catch (error) {
-      console.error("Rating Error:", error);
-    }
+    } catch (error) {}
   };
 
-  // Nav Item helper
+  const handleProfileSave = () => {
+    localStorage.setItem('indora_customer_username', userInfo.name);
+    localStorage.setItem('indora_customer_phone', userInfo.phone);
+    localStorage.setItem('indora_customer_email', userInfo.email);
+    alert("Profile Updated Successfully!");
+    setProfileView('main');
+  };
+
   const NavItem = ({ id, icon, label }) => (
     <button 
       onClick={() => setCurrentTab(id)}
@@ -222,25 +232,20 @@ function CustomerHome({ onLogout }) {
   return (
     <div className="h-screen w-screen relative bg-slate-100 font-sans flex flex-col overflow-hidden">
       
-      {/* ========================================= */}
-      {/* MAIN CONTENT AREA */}
-      {/* ========================================= */}
       <div className="flex-1 overflow-y-auto pb-20" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         
-        {/* TAB 1: HOME (Booking Flow) */}
+        {/* ======================= TAB 1: HOME ======================= */}
         {currentTab === 'home' && (
           <>
             {step === 'selection' && (
               <div className="p-6 md:p-8 max-w-2xl mx-auto h-full flex flex-col">
-                {/* Header */}
                 <div className="flex justify-between items-center mb-8 shrink-0 mt-4">
                   <h1 className="text-4xl font-black text-blue-600 tracking-tighter italic">INDORA</h1>
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md text-blue-600 cursor-pointer" onClick={() => setCurrentTab('profile')}>
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md text-blue-600 cursor-pointer hover:scale-105 active:scale-95 transition-all" onClick={() => setCurrentTab('profile')}>
                     <Icons.NavProfile />
                   </div>
                 </div>
 
-                {/* Promotional Banners */}
                 <div className="flex overflow-x-auto gap-4 mb-8 pb-4 snap-x shrink-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   <div className="min-w-[85%] md:min-w-[48%] bg-gradient-to-br from-blue-600 to-indigo-500 p-6 rounded-[30px] shadow-[8px_8px_20px_rgba(37,99,235,0.2)] text-white snap-center relative overflow-hidden flex-shrink-0">
                     <div className="relative z-10">
@@ -263,7 +268,6 @@ function CustomerHome({ onLogout }) {
                   </div>
                 </div>
                 
-                {/* Services Section */}
                 <p className="text-xl font-black text-slate-500 mb-6 shrink-0">What are you moving today?</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
                   {services.map((service) => (
@@ -285,8 +289,7 @@ function CustomerHome({ onLogout }) {
               <div className="relative h-full w-full">
                 <div className="absolute top-6 left-6 z-[2000]">
                   <button onClick={() => { setStep('selection'); setOrderId(null); setOffer(null); setDropoff(null); }} className="bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl font-black text-slate-700 shadow-[8px_8px_16px_rgba(0,0,0,0.1),inset_-4px_-4px_8px_rgba(255,255,255,0.8)] hover:bg-white transition-all flex items-center gap-2">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
-                    Back
+                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M19 12H5m7 7-7-7 7-7"/></svg> Back
                   </button>
                 </div>
 
@@ -297,7 +300,6 @@ function CustomerHome({ onLogout }) {
                   step={step} setStep={setStep} routeGeometry={offer ? offer.route_geometry : null}
                 />
 
-                {/* Bottom Booking Card */}
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] w-[92%] max-w-md bg-white/90 backdrop-blur-xl p-8 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/40">
                   <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100">
                       <div className="p-3 bg-blue-50 rounded-2xl shadow-inner">{services.find(s => s.id === vehicleType)?.icon}</div>
@@ -394,8 +396,7 @@ function CustomerHome({ onLogout }) {
           </>
         )}
 
-        {/* TAB 2: ORDERS */}
-        {/* TAB 2: ORDERS */}
+        {/* ======================= TAB 2: ORDERS ======================= */}
         {currentTab === 'orders' && (
           <div className="p-6 md:p-8 max-w-2xl mx-auto">
             <h2 className="text-3xl font-black text-slate-800 mb-6">My Trips</h2>
@@ -413,19 +414,10 @@ function CustomerHome({ onLogout }) {
                       <span className="font-black text-slate-700">Order #{order.id}</span>
                       <span className={`font-black px-3 py-1 rounded-md text-xs uppercase tracking-wider ${order.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{order.status}</span>
                     </div>
-                    
-                    {/* ---> ADDED FALLBACKS AND TRUNCATE HERE <--- */}
                     <div className="text-sm font-bold text-slate-500 flex flex-col gap-2">
-                      <p className="line-clamp-1 truncate">
-                        <span className="text-green-500 mr-2">●</span>
-                        {order.pickup_address || "GPS Location Saved"}
-                      </p>
-                      <p className="line-clamp-1 truncate">
-                        <span className="text-red-500 mr-2">●</span>
-                        {order.dropoff_address || "GPS Location Saved"}
-                      </p>
+                      <p className="line-clamp-1 truncate"><span className="text-green-500 mr-2">●</span>{order.pickup_address || "GPS Location Saved"}</p>
+                      <p className="line-clamp-1 truncate"><span className="text-red-500 mr-2">●</span>{order.dropoff_address || "GPS Location Saved"}</p>
                     </div>
-
                     <div className="mt-2 text-right font-black text-lg text-slate-800">₹{order.price}</div>
                   </div>
                 ))}
@@ -434,43 +426,134 @@ function CustomerHome({ onLogout }) {
           </div>
         )}
 
-        {/* TAB 3: PROFILE */}
+        {/* ======================= TAB 3: PROFILE ======================= */}
         {currentTab === 'profile' && (
           <div className="p-6 md:p-8 max-w-2xl mx-auto flex flex-col items-center">
-            <h2 className="text-3xl font-black text-slate-800 mb-8 w-full text-left">Profile</h2>
             
-            <div className="w-32 h-32 bg-slate-200 rounded-full mb-6 flex items-center justify-center shadow-inner border-4 border-white">
-              <Icons.NavProfile />
-            </div>
-            
-            <h3 className="text-2xl font-black text-slate-700 mb-2">My Account</h3>
-            <p className="text-slate-500 font-bold mb-10">Manage your details and preferences.</p>
+            {/* MAIN PROFILE VIEW */}
+            {profileView === 'main' && (
+              <div className="w-full flex flex-col items-center animate-fade-in">
+                <h2 className="text-3xl font-black text-slate-800 mb-8 w-full text-left">Profile</h2>
+                
+                <div className="w-32 h-32 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full mb-6 flex items-center justify-center shadow-inner border-4 border-white text-5xl">
+                  👤
+                </div>
+                
+                {/* Dynamically Show User Name & Phone */}
+                <h3 className="text-2xl font-black text-slate-700 mb-1">{userInfo.name}</h3>
+                <p className="text-slate-500 font-bold mb-10">{userInfo.phone}</p>
 
-            <div className="w-full space-y-4 mb-10">
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50">
-                <span className="font-bold text-slate-600">Edit Personal Info</span>
-                <span className="text-slate-400">➔</span>
-              </div>
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50">
-                <span className="font-bold text-slate-600">Saved Addresses</span>
-                <span className="text-slate-400">➔</span>
-              </div>
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50">
-                <span className="font-bold text-slate-600">Payment Methods</span>
-                <span className="text-slate-400">➔</span>
-              </div>
-            </div>
+                <div className="w-full space-y-4 mb-10">
+                  <div onClick={() => setProfileView('edit_info')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                    <span className="font-bold text-slate-600">Edit Personal Info</span>
+                    <span className="text-slate-400 font-bold">➔</span>
+                  </div>
+                  <div onClick={() => setProfileView('saved_addresses')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                    <span className="font-bold text-slate-600">Saved Addresses</span>
+                    <span className="text-slate-400 font-bold">➔</span>
+                  </div>
+                  <div onClick={() => setProfileView('payment_methods')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                    <span className="font-bold text-slate-600">Payment Methods</span>
+                    <span className="text-slate-400 font-bold">➔</span>
+                  </div>
+                </div>
 
-            <button 
-              onClick={onLogout} 
-              className="w-full p-5 rounded-2xl bg-red-50 text-red-600 font-black text-lg border border-red-100 hover:bg-red-100 transition-all active:scale-95"
-            >
-              Log Out
-            </button>
+                <button onClick={onLogout} className="w-full p-5 rounded-2xl bg-red-50 text-red-600 font-black text-lg border border-red-100 hover:bg-red-100 transition-all active:scale-95 shadow-sm">
+                  Log Out
+                </button>
+              </div>
+            )}
+
+            {/* EDIT INFO VIEW */}
+            {profileView === 'edit_info' && (
+              <div className="w-full animate-fade-in-up">
+                <button onClick={() => setProfileView('main')} className="mb-6 font-bold text-blue-600 flex items-center gap-2 hover:scale-105 transition-all"><span>←</span> Back to Profile</button>
+                <h2 className="text-3xl font-black text-slate-800 mb-6">Edit Info</h2>
+                
+                <div className="space-y-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-2">Full Name</label>
+                    <input type="text" value={userInfo.name} onChange={e => setUserInfo({...userInfo, name: e.target.value})} className="w-full mt-1 p-4 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:border-blue-400 outline-none font-bold text-slate-700 transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-2">Phone Number</label>
+                    <input type="text" value={userInfo.phone} onChange={e => setUserInfo({...userInfo, phone: e.target.value})} className="w-full mt-1 p-4 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:border-blue-400 outline-none font-bold text-slate-700 transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-2">Email Address</label>
+                    <input type="email" value={userInfo.email} onChange={e => setUserInfo({...userInfo, email: e.target.value})} className="w-full mt-1 p-4 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:border-blue-400 outline-none font-bold text-slate-700 transition-all" />
+                  </div>
+                  <button onClick={handleProfileSave} className="w-full mt-6 p-5 rounded-2xl bg-blue-600 text-white font-black shadow-[4px_4px_10px_rgba(37,99,235,0.3)] active:scale-95 transition-all">
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SAVED ADDRESSES VIEW */}
+            {profileView === 'saved_addresses' && (
+              <div className="w-full animate-fade-in-up">
+                <button onClick={() => setProfileView('main')} className="mb-6 font-bold text-blue-600 flex items-center gap-2 hover:scale-105 transition-all"><span>←</span> Back to Profile</button>
+                <h2 className="text-3xl font-black text-slate-800 mb-6">Saved Addresses</h2>
+                
+                <div className="space-y-4 mb-6">
+                  {/* Mock Address 1 */}
+                  <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl shadow-inner">🏠</div>
+                    <div className="flex-1">
+                      <p className="font-black text-slate-700">Home</p>
+                      <p className="text-sm font-bold text-slate-400 truncate">123 Maninagar St, Ahmedabad</p>
+                    </div>
+                  </div>
+                  {/* Mock Address 2 */}
+                  <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center text-xl shadow-inner">💼</div>
+                    <div className="flex-1">
+                      <p className="font-black text-slate-700">Work</p>
+                      <p className="text-sm font-bold text-slate-400 truncate">Tech Park, SG Highway, Ahmedabad</p>
+                    </div>
+                  </div>
+                </div>
+
+                <button className="w-full p-5 rounded-2xl bg-slate-800 text-white font-black shadow-lg active:scale-95 transition-all" onClick={() => alert("Add address feature coming soon!")}>
+                  + Add New Address
+                </button>
+              </div>
+            )}
+
+            {/* PAYMENT METHODS VIEW */}
+            {profileView === 'payment_methods' && (
+              <div className="w-full animate-fade-in-up">
+                <button onClick={() => setProfileView('main')} className="mb-6 font-bold text-blue-600 flex items-center gap-2 hover:scale-105 transition-all"><span>←</span> Back to Profile</button>
+                <h2 className="text-3xl font-black text-slate-800 mb-6">Payment Methods</h2>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="p-5 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl shadow-md flex justify-between items-center">
+                    <div>
+                      <p className="font-black text-lg">•••• •••• •••• 4242</p>
+                      <p className="text-xs font-bold text-slate-400 mt-1">Visa • Expires 12/26</p>
+                    </div>
+                    <div className="text-2xl font-black italic text-slate-400">VISA</div>
+                  </div>
+                  
+                  <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center text-xl font-black shadow-inner">R</div>
+                    <div className="flex-1">
+                      <p className="font-black text-slate-700">Razorpay Auto-Pay</p>
+                      <p className="text-sm font-bold text-green-500">Connected</p>
+                    </div>
+                  </div>
+                </div>
+
+                <button className="w-full p-5 rounded-2xl bg-blue-50 text-blue-600 font-black shadow-sm border border-blue-100 active:scale-95 transition-all" onClick={() => alert("Add card feature coming soon!")}>
+                  + Add Payment Method
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 4: HELP */}
+        {/* ======================= TAB 4: HELP (UPDATED) ======================= */}
         {currentTab === 'help' && (
           <div className="p-6 md:p-8 max-w-2xl mx-auto">
             <h2 className="text-3xl font-black text-slate-800 mb-6">Support & FAQ</h2>
@@ -479,16 +562,51 @@ function CustomerHome({ onLogout }) {
               <div className="relative z-10">
                 <h3 className="text-2xl font-black mb-2">Need immediate help?</h3>
                 <p className="font-bold text-blue-100 mb-6">Our support team is available 24/7.</p>
-                <button className="bg-white text-blue-600 font-black px-6 py-3 rounded-xl shadow-md">Call Support</button>
+                {/* ---> NEW: NATIVE PHONE DIALER BUTTON <--- */}
+                <a 
+                  href="tel:6354327209" 
+                  className="inline-block bg-white text-blue-600 font-black px-6 py-3 rounded-xl shadow-md hover:scale-105 active:scale-95 transition-all"
+                >
+                  📞 Call Support (6354327209)
+                </a>
               </div>
               <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
             </div>
 
             <h3 className="text-xl font-black text-slate-700 mb-4">Frequently Asked Questions</h3>
             <div className="space-y-4">
-              {['How are prices calculated?', 'Can I cancel my booking?', 'What items are restricted?'].map((q, i) => (
-                <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 cursor-pointer">
-                  <p className="font-bold text-slate-700">{q}</p>
+              {/* ---> NEW: INTERACTIVE FAQ ACCORDION <--- */}
+              {[
+                { 
+                  q: 'How are prices calculated?', 
+                  a: 'Prices are calculated based on the total distance of your route, the type of vehicle selected, and real-time demand in your area.' 
+                },
+                { 
+                  q: 'Can I cancel my booking?', 
+                  a: 'Yes, you can cancel your booking at any time before the driver arrives. Please note that a small cancellation fee may apply if the driver is already near the pickup location.' 
+                },
+                { 
+                  q: 'What items are restricted?', 
+                  a: 'We strictly prohibit the transport of hazardous materials, illegal substances, flammable liquids, weapons, and live animals.' 
+                }
+              ].map((faq, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+                  className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:bg-slate-50 transition-all"
+                >
+                  <div className="flex justify-between items-center">
+                    <p className="font-bold text-slate-700 pr-4">{faq.q}</p>
+                    <span className={`text-slate-400 font-black transition-transform duration-300 ${expandedFaq === i ? 'rotate-180 text-blue-500' : ''}`}>
+                      ↓
+                    </span>
+                  </div>
+                  {/* Sliding Answer */}
+                  {expandedFaq === i && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 text-sm font-bold text-slate-500 animate-fade-in-up">
+                      {faq.a}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -498,7 +616,6 @@ function CustomerHome({ onLogout }) {
 
       {/* ========================================= */}
       {/* BOTTOM NAVIGATION BAR */}
-      {/* (Hidden only when actively viewing the map) */}
       {/* ========================================= */}
       {!(currentTab === 'home' && step !== 'selection') && (
         <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)] z-[3000]">
@@ -526,6 +643,7 @@ function App() {
 
   const handleLoginSuccess = (username, token) => {
     localStorage.setItem('access_token', token);
+    localStorage.setItem('indora_customer_username', username);
     setIsLoggedIn(true);
   };
 
@@ -533,6 +651,7 @@ function App() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('indora_step');
     localStorage.removeItem('indora_order_id');
+    localStorage.removeItem('indora_customer_username');
     setIsLoggedIn(false);
     window.location.reload();
   };
