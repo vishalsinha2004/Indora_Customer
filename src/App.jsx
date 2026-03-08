@@ -33,6 +33,25 @@ const Icons = {
   NavProfile: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   NavHelp: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
 };
+// Helper to auto-scroll banners
+const AutoScroller = () => {
+  useEffect(() => {
+    let currentBanner = 1;
+    const totalBanners = 3;
+    
+    const interval = setInterval(() => {
+      currentBanner = currentBanner >= totalBanners ? 1 : currentBanner + 1;
+      const element = document.getElementById(`banner-${currentBanner}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }, 3000); // Changes every 3 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  return null; // Renders nothing
+};
 
 function CustomerHome({ onLogout }) {
   const [currentTab, setCurrentTab] = useState('home'); 
@@ -275,8 +294,19 @@ function CustomerHome({ onLogout }) {
               {/* --- STEP: SELECTION --- */}
               {step === 'selection' && (
                 <div className="flex flex-col h-full">
-                  <div className="flex overflow-x-auto gap-4 mb-8 pb-2 snap-x shrink-0 scrollbar-hide">
-                    <div className="min-w-[85%] flex-1 bg-gradient-to-br from-blue-600 to-indigo-600 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg">
+                  
+                  {/* Auto-scrolling Banners */}
+                  <div 
+                    className="flex overflow-x-auto gap-4 mb-8 pb-2 snap-x snap-mandatory shrink-0 scroll-smooth"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Hides scrollbar
+                  >
+                    <style>{`
+                      /* Hides scrollbar for Webkit/Chrome/Safari */
+                      div::-webkit-scrollbar { display: none; }
+                    `}</style>
+                    
+                    {/* Banner 1 */}
+                    <div className="min-w-[85%] flex-1 bg-gradient-to-br from-blue-600 to-indigo-600 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg" id="banner-1">
                       <div className="relative z-10">
                         <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">First Ride</span>
                         <h3 className="text-3xl font-black mt-3">50% OFF</h3>
@@ -284,7 +314,9 @@ function CustomerHome({ onLogout }) {
                       </div>
                       <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                     </div>
-                    <div className="min-w-[85%] flex-1 bg-gradient-to-br from-emerald-500 to-teal-500 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg">
+                    
+                    {/* Banner 2 */}
+                    <div className="min-w-[85%] flex-1 bg-gradient-to-br from-emerald-500 to-teal-500 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg" id="banner-2">
                       <div className="relative z-10">
                         <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">Premium</span>
                         <h3 className="text-3xl font-black mt-3">Packers</h3>
@@ -292,23 +324,20 @@ function CustomerHome({ onLogout }) {
                       </div>
                       <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                     </div>
-                    <div className="min-w-[85%] flex-1 bg-gradient-to-br from-blue-600 to-indigo-600 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg">
+
+                    {/* Banner 3 */}
+                    <div className="min-w-[85%] flex-1 bg-gradient-to-br from-purple-500 to-pink-500 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg" id="banner-3">
                       <div className="relative z-10">
-                        <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">First Ride</span>
-                        <h3 className="text-3xl font-black mt-3">50% OFF</h3>
-                        <p className="text-sm font-bold text-blue-100 mb-3">On two-wheelers.</p>
-                      </div>
-                      <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-                    </div>
-                    <div className="min-w-[85%] flex-1 bg-gradient-to-br from-blue-600 to-indigo-600 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg">
-                      <div className="relative z-10">
-                        <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">First Ride</span>
-                        <h3 className="text-3xl font-black mt-3">50% OFF</h3>
-                        <p className="text-sm font-bold text-blue-100 mb-3">On two-wheelers.</p>
+                        <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">Speed</span>
+                        <h3 className="text-3xl font-black mt-3">Lightning</h3>
+                        <p className="text-sm font-bold text-pink-50 mb-3">Fast document delivery.</p>
                       </div>
                       <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                     </div>
                   </div>
+
+                  {/* Auto-scroll Logic Component */}
+                  <AutoScroller />
                   
                   <p className="text-xl font-black text-slate-800 mb-5">What are you moving?</p>
                   <div className="grid grid-cols-2 gap-4 pb-4">
