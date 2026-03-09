@@ -63,7 +63,11 @@ const MapWatermark = () => {
         const div = L.DomUtil.create('div', 'map-watermark');
         div.className = "m-4";
         div.innerHTML = `
-          
+          <div style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); padding: 10px 20px; border-radius: 20px; 
+                      border: 1px solid rgba(255, 255, 255, 0.4); color: #2563eb; font-weight: 800; font-size: 14px;
+                      box-shadow: 8px 8px 16px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8); pointer-events: none; display: flex; align-items: center;">
+            Indora Active in Ahmedabad
+          </div>
         `;
         return div;
       }
