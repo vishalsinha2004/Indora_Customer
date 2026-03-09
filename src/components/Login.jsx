@@ -31,7 +31,7 @@ const Login = ({ onLoginSuccess, switchToSignup }) => {
       <div className="w-full max-w-md p-10 bg-white/80 backdrop-blur-sm rounded-[40px] shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] border border-white/20 transition-all duration-300">
         
         <h2 className="text-3xl font-black text-center mb-8 text-slate-800 tracking-tight">
-          👋 Welcome Back
+          👋 Welcome back to Parceel
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
