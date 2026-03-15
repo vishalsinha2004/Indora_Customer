@@ -100,7 +100,7 @@ function CustomerHome({ onLogout }) {
   useEffect(() => {
     if (currentTab === 'orders') {
       setLoadingHistory(true);
-      api.get('rides/')
+      api.get('/api/orders/rides/')
         .then(res => setOrderHistory(res.data.sort((a, b) => b.id - a.id)))
         .catch(err => console.error(err))
         .finally(() => setLoadingHistory(false));
@@ -123,7 +123,7 @@ function CustomerHome({ onLogout }) {
 
   const fetchPrice = async () => {
     try {
-      const response = await api.post('rides/', {
+      const response = await api.post('/api/orders/rides/', {
         pickup_lat: pickup[0], pickup_lng: pickup[1],
         dropoff_lat: dropoff[0], dropoff_lng: dropoff[1],
         pickup_address: pickupAddress,
@@ -143,7 +143,7 @@ function CustomerHome({ onLogout }) {
       name: "Indora Rides",
       order_id: offer.razorpay_order_id,
       handler: async function (res) {
-        await api.post(`rides/${offer.id}/verify_payment/`, {
+        await api.post(`/api/orders/rides/${offer.id}/verify_payment/`, {
           razorpay_order_id: res.razorpay_order_id,
           razorpay_payment_id: res.razorpay_payment_id,
           razorpay_signature: res.razorpay_signature
@@ -158,12 +158,12 @@ function CustomerHome({ onLogout }) {
 
   useEffect(() => {
     if (!orderId || step !== 'finished') return;
-    const socket = io('http://localhost:8000'); 
+const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:8000';
     socket.emit('join_order', { order_id: orderId });
 
     const fetchCurrentStatus = async () => {
       try {
-        const response = await api.get(`rides/${orderId}/`);
+        const response = await api.get(`/api/orders/rides/${orderId}/`);
         setStatus(response.data.status.toLowerCase());
         if (response.data.driver_name) setDriverName(response.data.driver_name);
         if (response.data.driver_phone) setDriverPhone(response.data.driver_phone);
@@ -192,7 +192,7 @@ function CustomerHome({ onLogout }) {
   const submitRating = async () => {
     if (rating === 0) return alert("Please select a star rating");
     try {
-      await api.post(`rides/${orderId}/rate_driver/`, { rating: rating, feedback: feedback });
+await api.post(`/api/orders/rides/${orderId}/rate_driver/`, { rating: rating, feedback: feedback });
       setIsRated(true);
     } catch (error) {}
   };
