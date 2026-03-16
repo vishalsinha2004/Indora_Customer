@@ -9,9 +9,9 @@ const Login = ({ onLoginSuccess, switchToSignup }) => {
     e.preventDefault();
     setLoading(true);
     try {
-          const response = await api.post('/api/auth/login/', {
+        const response = await api.post('/api/auth/login/', {
           username: formData.username, 
-        password: formData.password 
+          password: formData.password 
       });
 
       const token = response.data.access; 
@@ -26,51 +26,50 @@ const Login = ({ onLoginSuccess, switchToSignup }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100 p-4">
-      {/* Claymorphism Card: Soft 3D appearance with massive rounded corners and dual shadows */}
-      <div className="w-full max-w-md p-10 bg-white/80 backdrop-blur-sm rounded-[40px] shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] border border-white/20 transition-all duration-300">
+    <div className="flex items-center justify-center min-h-screen bg-zinc-50 p-4 selection:bg-red-200 selection:text-red-900">
+      {/* Premium Glassmorphism Card */}
+      <div className="w-full max-w-md p-10 bg-white/70 backdrop-blur-2xl rounded-[36px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white/60 transition-all duration-400">
         
-        <h2 className="text-3xl font-black text-center mb-8 text-slate-800 tracking-tight">
+        <h2 className="text-3xl font-black text-center mb-8 text-zinc-900 tracking-tight">
           👋 Welcome Back
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* Username Input: Inner shadows create an embossed/pressed effect */}
+          {/* Sleek Glassy Input */}
           <div className="flex flex-col">
             <input 
               placeholder="Username" 
               onChange={(e) => setFormData({...formData, username: e.target.value})}
               required 
-              className="p-4 rounded-2xl bg-slate-50 border-none shadow-[inset_4px_4px_8px_rgba(0,0,0,0.05),inset_-4px_-4px_8px_rgba(255,255,255,0.9)] focus:ring-4 ring-blue-100 outline-none transition-all placeholder:text-slate-400"
+              className="p-4 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:border-red-300 focus:ring-4 focus:ring-red-600/10 outline-none transition-all placeholder:text-zinc-400 font-bold text-zinc-800"
             />
           </div>
 
-          {/* Password Input */}
           <div className="flex flex-col">
             <input 
               type="password"
               placeholder="Password" 
               onChange={(e) => setFormData({...formData, password: e.target.value})}
               required 
-              className="p-4 rounded-2xl bg-slate-50 border-none shadow-[inset_4px_4px_8px_rgba(0,0,0,0.05),inset_-4px_-4px_8px_rgba(255,255,255,0.9)] focus:ring-4 ring-blue-100 outline-none transition-all placeholder:text-slate-400"
+              className="p-4 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:border-red-300 focus:ring-4 focus:ring-red-600/10 outline-none transition-all placeholder:text-zinc-400 font-bold text-zinc-800"
             />
           </div>
 
-          {/* Login Button: Combined outer and inner shadows for a "squishy" feel */}
+          {/* Premium Red Button */}
           <button 
             type="submit" 
             disabled={loading} 
-            className="mt-4 p-4 rounded-2xl bg-blue-600 text-white font-bold text-lg shadow-[4px_4px_10px_rgba(37,99,235,0.3),inset_-4px_-4px_8px_rgba(0,0,0,0.2),inset_4px_4px_8px_rgba(255,255,255,0.3)] hover:scale-[1.02] active:scale-[0.98] active:shadow-inner transition-all disabled:opacity-50"
+            className="mt-4 p-4 rounded-2xl bg-red-600 text-white font-black text-lg shadow-[0_8px_20px_rgba(220,38,38,0.25)] hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 tracking-wide"
           >
-            {loading ? 'Logging in...' : 'Login to Indora'}
+            {loading ? 'Logging in...' : 'Login to Parceel'}
           </button>
         </form>
 
-        <p className="text-center mt-8 text-slate-500 font-medium">
+        <p className="text-center mt-8 text-zinc-500 font-medium">
           New here?{' '}
           <span 
             onClick={switchToSignup} 
-            className="text-blue-600 cursor-pointer font-bold hover:underline underline-offset-4"
+            className="text-red-600 cursor-pointer font-bold hover:text-red-700 transition-colors"
           >
             Create an account
           </span>

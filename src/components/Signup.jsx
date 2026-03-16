@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import api from '../api/axios';
 
 const Signup = ({ onSignupSuccess, switchToLogin }) => {
-  // --- FIX: Added phone_number to state ---
   const [formData, setFormData] = useState({ username: '', email: '', phone_number: '', password: '' });
 
   const handleSubmit = async (e) => {
@@ -17,7 +16,7 @@ const Signup = ({ onSignupSuccess, switchToLogin }) => {
     try {
        await api.post('/api/auth/signup/', formData);      
       // Save it locally so the Profile tab can show it immediately after they log in
-      localStorage.setItem('indora_customer_phone', formData.phone_number);
+      localStorage.setItem('parceel_customer_phone', formData.phone_number);
       
       alert("✅ Account created! Please login.");
       switchToLogin();
@@ -32,27 +31,25 @@ const Signup = ({ onSignupSuccess, switchToLogin }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100 p-4">
-      {/* Main Container with Claymorphism Card Effect */}
-      <div className="w-full max-w-md p-10 bg-white/80 backdrop-blur-sm rounded-[40px] shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] border border-white/20">
+    <div className="flex items-center justify-center min-h-screen bg-zinc-50 p-4 selection:bg-red-200 selection:text-red-900">
+      {/* Main Container with Glassmorphism Card Effect */}
+      <div className="w-full max-w-md p-10 bg-white/70 backdrop-blur-2xl rounded-[36px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white/60 transition-all duration-400">
         
-        <h2 className="text-3xl font-black text-center mb-8 text-slate-800 tracking-tight">
-          🚀 Join Indora
+        <h2 className="text-3xl font-black text-center mb-8 text-zinc-900 tracking-tight">
+          🚀 Join Parceel
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* Username Input with Inner Shadow Effect */}
           <div className="flex flex-col">
             <input 
               name="username" 
               placeholder="Username" 
               onChange={(e) => setFormData({...formData, username: e.target.value})} 
               required 
-              className="p-4 rounded-2xl bg-slate-50 border-none shadow-[inset_4px_4px_8px_rgba(0,0,0,0.05),inset_-4px_-4px_8px_rgba(255,255,255,0.9)] focus:ring-4 ring-blue-100 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-700"
+              className="p-4 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:border-red-300 focus:ring-4 focus:ring-red-600/10 outline-none transition-all placeholder:text-zinc-400 font-bold text-zinc-800"
             />
           </div>
 
-          {/* Email Input */}
           <div className="flex flex-col">
             <input 
               name="email" 
@@ -60,11 +57,10 @@ const Signup = ({ onSignupSuccess, switchToLogin }) => {
               placeholder="Email Address" 
               onChange={(e) => setFormData({...formData, email: e.target.value})} 
               required 
-              className="p-4 rounded-2xl bg-slate-50 border-none shadow-[inset_4px_4px_8px_rgba(0,0,0,0.05),inset_-4px_-4px_8px_rgba(255,255,255,0.9)] focus:ring-4 ring-blue-100 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-700"
+              className="p-4 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:border-red-300 focus:ring-4 focus:ring-red-600/10 outline-none transition-all placeholder:text-zinc-400 font-bold text-zinc-800"
             />
           </div>
 
-          {/* --- NEW: Phone Number Input --- */}
           <div className="flex flex-col">
             <input 
               name="phone_number" 
@@ -72,11 +68,10 @@ const Signup = ({ onSignupSuccess, switchToLogin }) => {
               placeholder="Phone Number (e.g. 9876543210)" 
               onChange={(e) => setFormData({...formData, phone_number: e.target.value})} 
               required 
-              className="p-4 rounded-2xl bg-slate-50 border-none shadow-[inset_4px_4px_8px_rgba(0,0,0,0.05),inset_-4px_-4px_8px_rgba(255,255,255,0.9)] focus:ring-4 ring-blue-100 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-700"
+              className="p-4 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:border-red-300 focus:ring-4 focus:ring-red-600/10 outline-none transition-all placeholder:text-zinc-400 font-bold text-zinc-800"
             />
           </div>
 
-          {/* Password Input */}
           <div className="flex flex-col">
             <input 
               name="password" 
@@ -84,24 +79,24 @@ const Signup = ({ onSignupSuccess, switchToLogin }) => {
               placeholder="Password" 
               onChange={(e) => setFormData({...formData, password: e.target.value})} 
               required 
-              className="p-4 rounded-2xl bg-slate-50 border-none shadow-[inset_4px_4px_8px_rgba(0,0,0,0.05),inset_-4px_-4px_8px_rgba(255,255,255,0.9)] focus:ring-4 ring-blue-100 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-700"
+              className="p-4 rounded-2xl bg-white/50 backdrop-blur-sm border border-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus:border-red-300 focus:ring-4 focus:ring-red-600/10 outline-none transition-all placeholder:text-zinc-400 font-bold text-zinc-800"
             />
           </div>
 
-          {/* Button with Claymorphism "Squishy" Effect */}
+          {/* Solid Zinc Black Button */}
           <button 
             type="submit" 
-            className="mt-4 p-4 rounded-2xl bg-blue-600 text-white font-bold text-lg shadow-[4px_4px_10px_rgba(37,99,235,0.3),inset_-4px_-4px_8px_rgba(0,0,0,0.2),inset_4px_4px_8px_rgba(255,255,255,0.3)] hover:scale-[1.02] active:scale-[0.98] active:shadow-inner transition-all tracking-wide"
+            className="mt-4 p-4 rounded-2xl bg-zinc-900 text-white font-black text-lg shadow-[0_10px_25px_rgba(0,0,0,0.2)] hover:bg-black active:scale-95 transition-all tracking-wide"
           >
             Create Account
           </button>
         </form>
 
-        <p className="text-center mt-8 text-slate-500 font-medium">
+        <p className="text-center mt-8 text-zinc-500 font-medium">
           Already have an account?{' '}
           <span 
             onClick={switchToLogin} 
-            className="text-blue-600 cursor-pointer font-bold hover:underline underline-offset-4"
+            className="text-red-600 cursor-pointer font-bold hover:text-red-700 transition-colors"
           >
             Login
           </span>
@@ -111,4 +106,4 @@ const Signup = ({ onSignupSuccess, switchToLogin }) => {
   );
 };
 
-export default Signup;
+export default Signup;  

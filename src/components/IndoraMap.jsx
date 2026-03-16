@@ -1,36 +1,42 @@
 // src/components/IndoraMap.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Import the routing machine CSS and JS
 import 'leaflet-routing-machine';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 
-// Fix for default marker icons
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
+// --- PREMIUM CUSTOM MARKERS ---
+// A clean Red pin for Pickup
+const pickupIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
     iconSize: [25, 41],
-    iconAnchor: [12, 41]
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
 });
-L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- ADDED: Custom Car Icon for Driver ---
+// A clean Black pin for Dropoff
+const dropoffIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
 const carIcon = L.icon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/741/741407.png',
     iconSize: [35, 35],
     iconAnchor: [17, 17],
 });
 
-// --- Helper: SVGs for Claymorphism UI ---
 const MapIcons = {
     Location: () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-900">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
         </svg>
     ),
@@ -41,7 +47,6 @@ const MapIcons = {
     )
 };
 
-// --- Helper: Get Address from Coords ---
 const getAddressFromCoords = async (lat, lng) => {
     try {
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
@@ -54,7 +59,6 @@ const getAddressFromCoords = async (lat, lng) => {
     }
 };
 
-// --- Component: Branding Watermark ---
 const MapWatermark = () => {
   const map = useMap();
   useEffect(() => {
@@ -63,10 +67,10 @@ const MapWatermark = () => {
         const div = L.DomUtil.create('div', 'map-watermark');
         div.className = "m-4";
         div.innerHTML = `
-          <div style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); padding: 10px 20px; border-radius: 20px; 
-                      border: 1px solid rgba(255, 255, 255, 0.4); color: #2563eb; font-weight: 800; font-size: 14px;
-                      box-shadow: 8px 8px 16px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8); pointer-events: none; display: flex; align-items: center;">
-            Indora Active in Ahmedabad
+          <div style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); padding: 10px 20px; border-radius: 20px; 
+                      border: 1px solid rgba(255, 255, 255, 0.6); color: #18181b; font-weight: 900; font-size: 14px;
+                      box-shadow: 0 8px 30px rgba(0,0,0,0.06); pointer-events: none; display: flex; align-items: center; letter-spacing: -0.5px;">
+            <span style="color: #dc2626; margin-right: 5px; font-style: italic;">PARCEEL</span> Active
           </div>
         `;
         return div;
@@ -79,7 +83,6 @@ const MapWatermark = () => {
   return null;
 };
 
-// --- Component: Area Marks ---
 const AreaMarks = () => {
     const availableZones = [
         { name: "Maninagar", coords: [22.9978, 72.6009] },
@@ -90,39 +93,52 @@ const AreaMarks = () => {
 
     return availableZones.map((zone, idx) => (
         <React.Fragment key={idx}>
-            <CircleMarker center={zone.coords} radius={10} pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.6 }}>
+            <CircleMarker center={zone.coords} radius={10} pathOptions={{ color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.3, weight: 2 }}>
                 <Tooltip permanent direction="top" offset={[0, -10]}>
-                    <span className="font-bold text-green-800">Available</span>
+                    <span className="font-bold text-red-700 tracking-tight">Available</span>
                 </Tooltip>
             </CircleMarker>
         </React.Fragment>
     ));
 };
 
-// --- Component: Routing Engine ---
 function RoutingEngine({ pickup, dropoff }) {
   const map = useMap();
+  const routingControlRef = useRef(null);
+
   useEffect(() => {
     if (!map || !pickup || !dropoff) return;
-    const routingControl = L.Routing.control({
+
+    // Automatically zoom out to perfectly fit both pickup and dropoff on screen!
+    const bounds = L.latLngBounds([pickup, dropoff]);
+    map.fitBounds(bounds, { padding: [50, 50], animate: true, duration: 1.5 });
+
+    if (routingControlRef.current) {
+        map.removeControl(routingControlRef.current);
+    }
+
+    routingControlRef.current = L.Routing.control({
       waypoints: [L.latLng(pickup[0], pickup[1]), L.latLng(dropoff[0], dropoff[1])],
-      lineOptions: { styles: [{ color: '#2563eb', weight: 6, opacity: 0.8 }] },
+      lineOptions: { styles: [{ color: '#dc2626', weight: 5, opacity: 0.9 }] },
       addWaypoints: false,
       draggableWaypoints: false,
-      fitSelectedRoutes: true,
+      fitSelectedRoutes: false, // Turned off because we handle it better above
       show: false 
     }).addTo(map);
-    return () => map.removeControl(routingControl);
+
+    return () => {
+        if (routingControlRef.current && map) {
+            map.removeControl(routingControlRef.current);
+        }
+    };
   }, [map, pickup, dropoff]);
   return null;
 }
 
-// --- Component: Action Buttons ---
 function ActionButtons({ setPickup, setPickupAddress, setDropoff, setDropoffAddress, step }) {
   const map = useMap();
 
   const handleFetchLocation = () => {
-    console.log("Attempting to fetch location...");
     if (!navigator.geolocation) {
         return alert("Geolocation is not supported by your browser");
     }
@@ -131,14 +147,12 @@ function ActionButtons({ setPickup, setPickupAddress, setDropoff, setDropoffAddr
         async (position) => {
             const { latitude, longitude } = position.coords;
             const coords = [latitude, longitude];
-            console.log("Location found:", coords);
-            map.flyTo(coords, 15);
+            map.flyTo(coords, 17, { animate: true, duration: 1.5 });
             setPickup(coords);
             const address = await getAddressFromCoords(latitude, longitude);
             setPickupAddress(address);
         },
         (error) => {
-            console.error("Geolocation Error:", error);
             alert("Unable to retrieve location. Please ensure Location Permissions are ON.");
         },
         { enableHighAccuracy: true }
@@ -158,28 +172,33 @@ function ActionButtons({ setPickup, setPickupAddress, setDropoff, setDropoffAddr
       {step === 'pickup' ? (
         <button 
           onClick={handleFetchLocation} 
-          className="bg-white p-4 rounded-2xl shadow-[8px_8px_16px_rgba(0,0,0,0.1),inset_-4px_-4px_8px_rgba(255,255,255,0.8)] hover:scale-110 active:scale-90 transition-all duration-200 flex items-center justify-center border border-white/40 pointer-events-auto"
+          className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-[0_8px_25px_rgba(0,0,0,0.08)] border border-white/60 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center pointer-events-auto"
         >
           <MapIcons.Location />
         </button>
-      ) : (
+      ) : step === 'dropoff' ? (
         <button 
             onClick={handleSetDropoff}
-            className="bg-blue-600 text-white px-6 py-4 rounded-[20px] shadow-[8px_8px_20px_rgba(37,99,235,0.3),inset_-4px_-4px_8px_rgba(0,0,0,0.2)] hover:scale-[1.05] active:scale-[0.95] transition-all duration-200 font-black flex items-center gap-2 border border-blue-400/30 pointer-events-auto"
+            className="bg-zinc-900 text-white px-6 py-4 rounded-[20px] shadow-[0_10px_25px_rgba(0,0,0,0.2)] hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 font-black flex items-center gap-2 pointer-events-auto tracking-wide"
         >
             <MapIcons.Target />
             Set Dropoff at Center
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
 
-// --- MAIN COMPONENT (Added driverLocation) ---
 const IndoraMap = ({ pickup, setPickup, dropoff, setDropoff, pickupAddress, dropoffAddress, setPickupAddress, setDropoffAddress, step, driverLocation }) => {
   return (
     <MapContainer center={[22.9868, 72.5977]} zoom={13} style={{ height: "100vh", width: "100%" }}>
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      {/* HIGH ACCURACY GOOGLE MAPS TILE LAYER */}
+      <TileLayer 
+        url="http://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
+        maxZoom={20}
+        attribution="&copy; Google Maps"
+      />
+      
       <MapWatermark />
       <AreaMarks />
       <ActionButtons 
@@ -191,10 +210,10 @@ const IndoraMap = ({ pickup, setPickup, dropoff, setDropoff, pickupAddress, drop
       />
       <RoutingEngine pickup={pickup} dropoff={dropoff} />
       
-      {pickup && <Marker position={pickup}><Popup>Pickup: {pickupAddress}</Popup></Marker>}
-      {dropoff && <Marker position={dropoff}><Popup>Dropoff: {dropoffAddress}</Popup></Marker>}
+      {/* Updated to use Red and Black pins */}
+      {pickup && <Marker position={pickup} icon={pickupIcon}><Popup><span className="font-bold">Pickup:</span> {pickupAddress}</Popup></Marker>}
+      {dropoff && <Marker position={dropoff} icon={dropoffIcon}><Popup><span className="font-bold">Dropoff:</span> {dropoffAddress}</Popup></Marker>}
       
-      {/* --- ADDED: Real-time Driver Marker --- */}
       {driverLocation && driverLocation[0] && (
           <Marker position={driverLocation} icon={carIcon}>
               <Popup>Your Driver is here!</Popup>
