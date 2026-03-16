@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import IndoraMap from './components/IndoraMap';
 import api from './api/axios';
@@ -33,7 +33,7 @@ const Icons = {
   NavProfile: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   NavHelp: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
 };
-// Helper to auto-scroll banners
+
 const AutoScroller = () => {
   useEffect(() => {
     let currentBanner = 1;
@@ -45,12 +45,12 @@ const AutoScroller = () => {
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       }
-    }, 3000); // Changes every 3 seconds
+    }, 3000); 
     
     return () => clearInterval(interval);
   }, []);
   
-  return null; // Renders nothing
+  return null; 
 };
 
 function CustomerHome({ onLogout }) {
@@ -58,6 +58,10 @@ function CustomerHome({ onLogout }) {
   const [profileView, setProfileView] = useState('main'); 
   const [expandedFaq, setExpandedFaq] = useState(null);
   
+  // --- SWIPE LOGIC STATE ---
+  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+  const touchStartY = useRef(0);
+
   const [userInfo, setUserInfo] = useState({
     name: localStorage.getItem('indora_customer_username') || "Customer",
     phone: localStorage.getItem('indora_customer_phone') || "+91 9876543210",
@@ -86,6 +90,12 @@ function CustomerHome({ onLogout }) {
   const [orderHistory, setOrderHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // --- AUTOMATIC EXPANSION ON NEW STEPS ---
+  useEffect(() => {
+    if (step !== 'selection') setIsSheetExpanded(true);
+    else setIsSheetExpanded(false);
+  }, [step]);
+
   useEffect(() => { localStorage.setItem('indora_step', step); }, [step]);
   useEffect(() => {
     if (orderId) localStorage.setItem('indora_order_id', orderId);
@@ -106,6 +116,20 @@ function CustomerHome({ onLogout }) {
         .finally(() => setLoadingHistory(false));
     }
   }, [currentTab]);
+
+  // --- TOUCH HANDLERS ---
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const distance = touchStartY.current - touchEndY;
+    // Swipe Up
+    if (distance > 40) setIsSheetExpanded(true);
+    // Swipe Down
+    else if (distance < -40) setIsSheetExpanded(false);
+  };
 
   const services = [
     { id: '2-wheeler', name: '2 Wheeler', icon: <Icons.TwoWheeler />, active: true, desc: 'Fast & Pocket Friendly' },
@@ -131,6 +155,7 @@ function CustomerHome({ onLogout }) {
         vehicle_type: vehicleType
       });
       setOffer(response.data);
+      setIsSheetExpanded(true); // Open sheet when fare comes back
     } catch (error) { alert(`❌ Error: ${error.response?.data?.detail || "Could not calculate price"}`); }
   };
 
@@ -150,6 +175,7 @@ function CustomerHome({ onLogout }) {
         });
         setOrderId(offer.id);
         setStep('finished');
+        setIsSheetExpanded(false); // Close sheet after paying so they see map
       }
     };
     const rzp = new window.Razorpay(options);
@@ -158,12 +184,13 @@ function CustomerHome({ onLogout }) {
 
   useEffect(() => {
     if (!orderId || step !== 'finished') return;
-const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:8000';
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:8000';
+    const socket = io(socketUrl);
     socket.emit('join_order', { order_id: orderId });
 
     const fetchCurrentStatus = async () => {
       try {
-const response = await api.get(`/api/rides/${orderId}/`);
+        const response = await api.get(`/api/rides/${orderId}/`);
         setStatus(response.data.status.toLowerCase());
         if (response.data.driver_name) setDriverName(response.data.driver_name);
         if (response.data.driver_phone) setDriverPhone(response.data.driver_phone);
@@ -192,7 +219,7 @@ const response = await api.get(`/api/rides/${orderId}/`);
   const submitRating = async () => {
     if (rating === 0) return alert("Please select a star rating");
     try {
-await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback: feedback });
+      await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback: feedback });
       setIsRated(true);
     } catch (error) {}
   };
@@ -205,10 +232,8 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
     setProfileView('main');
   };
 
-  // Shared classes for beautifully hiding scrollbars while retaining scroll functionality
   const hideScrollbar = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']";
 
-  // Desktop Navigation Pill
   const DesktopNavBtn = ({ id, label }) => (
     <button 
       onClick={() => setCurrentTab(id)}
@@ -218,7 +243,6 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
     </button>
   );
 
-  // Mobile Navigation Icon
   const MobileNavBtn = ({ id, icon, label }) => (
     <button 
       onClick={() => setCurrentTab(id)}
@@ -233,7 +257,7 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
     <div className="h-screen w-screen bg-slate-50 font-sans flex overflow-hidden relative">
       
       {/* ========================================= */}
-      {/* BACKGROUND MAP (Always full bleed) */}
+      {/* BACKGROUND MAP */}
       {/* ========================================= */}
       <div className="absolute inset-0 z-0 md:left-[420px] md:w-[calc(100vw-420px)] w-full transition-all duration-500">
         <IndoraMap 
@@ -257,20 +281,27 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
       </div>
 
       {/* ========================================= */}
-      {/* THE INTERACTIVE UI PANEL (Left Desktop / Bottom Mobile) */}
+      {/* THE INTERACTIVE UI PANEL WITH SWIPE LOGIC */}
       {/* ========================================= */}
       <div className={`
-        fixed bottom-0 left-0 w-full z-[2000] flex flex-col pointer-events-auto
+        fixed bottom-[72px] md:bottom-0 left-0 w-full z-[2000] flex flex-col pointer-events-auto
         md:relative md:w-[420px] md:h-full md:max-h-full
         bg-white/95 backdrop-blur-2xl md:bg-white
         rounded-t-[40px] md:rounded-none
         shadow-[0_-15px_40px_rgba(0,0,0,0.1)] md:shadow-[10px_0_40px_rgba(0,0,0,0.05)]
-        border-r border-slate-200 transition-all duration-500
-        ${step === 'selection' && currentTab === 'home' ? 'h-[90vh]' : 'max-h-[85vh]'} 
+        border-t border-slate-200 md:border-t-0 md:border-r transition-all duration-300 ease-out
+        ${isSheetExpanded ? 'h-[85vh] md:h-full' : 'h-[50vh] md:h-full'} 
       `}>
         
         {/* MOBILE DRAG HANDLE */}
-        <div className="md:hidden w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-4 shrink-0"></div>
+        <div 
+          className="md:hidden w-full pt-5 pb-3 flex justify-center items-center cursor-grab active:cursor-grabbing shrink-0"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+        >
+          <div className="w-16 h-1.5 bg-slate-300 rounded-full"></div>
+        </div>
 
         {/* DESKTOP HEADER & NAVIGATION */}
         <div className="hidden md:flex flex-col p-8 pb-4 shrink-0 border-b border-slate-100">
@@ -283,29 +314,19 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
            </div>
         </div>
 
-        {/* ========================================= */}
         {/* SCROLLABLE CONTENT AREA */}
-        {/* ========================================= */}
-        <div className={`flex-1 overflow-y-auto px-6 py-6 md:px-8 md:py-6 pb-[100px] md:pb-8 ${hideScrollbar}`}>
+        <div className={`flex-1 overflow-y-auto px-6 py-2 md:px-8 md:py-6 pb-[100px] md:pb-8 ${hideScrollbar}`}>
           
-          {/* TAB 1: HOME (BOOKING FLOW) */}
+          {/* TAB 1: HOME */}
           {currentTab === 'home' && (
-            <div className="animate-fade-in">
-              {/* --- STEP: SELECTION --- */}
+            <div className="animate-fade-in h-full">
               {step === 'selection' && (
                 <div className="flex flex-col h-full">
-                  
-                  {/* Auto-scrolling Banners */}
                   <div 
                     className="flex overflow-x-auto gap-4 mb-8 pb-2 snap-x snap-mandatory shrink-0 scroll-smooth"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Hides scrollbar
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
-                    <style>{`
-                      /* Hides scrollbar for Webkit/Chrome/Safari */
-                      div::-webkit-scrollbar { display: none; }
-                    `}</style>
-                    
-                    {/* Banner 1 */}
+                    <style>{`div::-webkit-scrollbar { display: none; }`}</style>
                     <div className="min-w-[85%] flex-1 bg-gradient-to-br from-blue-600 to-indigo-600 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg" id="banner-1">
                       <div className="relative z-10">
                         <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">First Ride</span>
@@ -314,8 +335,6 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                       </div>
                       <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                     </div>
-                    
-                    {/* Banner 2 */}
                     <div className="min-w-[85%] flex-1 bg-gradient-to-br from-emerald-500 to-teal-500 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg" id="banner-2">
                       <div className="relative z-10">
                         <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">Premium</span>
@@ -324,8 +343,6 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                       </div>
                       <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                     </div>
-
-                    {/* Banner 3 */}
                     <div className="min-w-[85%] flex-1 bg-gradient-to-br from-purple-500 to-pink-500 p-6 rounded-[24px] text-white snap-center relative overflow-hidden shadow-lg" id="banner-3">
                       <div className="relative z-10">
                         <span className="bg-white/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">Speed</span>
@@ -336,10 +353,9 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                     </div>
                   </div>
 
-                  {/* Auto-scroll Logic Component */}
                   <AutoScroller />
                   
-                  <p className="text-xl font-black text-slate-800 mb-5">What are you moving?</p>
+                  <p className="text-xl font-black text-slate-800 mb-4">What are you moving?</p>
                   <div className="grid grid-cols-2 gap-4 pb-4">
                     {services.map((service) => (
                       <div 
@@ -356,11 +372,10 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                 </div>
               )}
 
-              {/* --- STEP: PICKUP / DROPOFF / ACTIVE --- */}
+              {/* --- STEP: PICKUP / DROPOFF --- */}
               {step !== 'selection' && (
                 <div className="flex flex-col h-full">
 
-                  {/* DESKTOP BACK BUTTON */}
                   <button 
                     onClick={() => { setStep('selection'); setOrderId(null); setOffer(null); setDropoff(null); }} 
                     className="hidden md:flex items-center gap-2 text-slate-500 font-bold hover:text-blue-600 transition-colors mb-6 w-fit"
@@ -369,13 +384,13 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                     Back to Services
                   </button>
 
-                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-100">
+                  <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100 mt-2 md:mt-0">
                       <div className="p-3 bg-blue-50 rounded-2xl shadow-inner">{services.find(s => s.id === vehicleType)?.icon}</div>
                       <span className="font-black text-2xl text-slate-800">{services.find(s => s.id === vehicleType)?.name}</span>
                   </div>
 
                   {status !== 'completed' && (
-                    <div className="space-y-4 mb-8">
+                    <div className="space-y-4 mb-6">
                       <div className="relative pl-6 border-l-4 border-green-400">
                         <div className="text-[10px] font-black text-green-500 uppercase tracking-widest">Pickup</div>
                         <div className="text-sm font-bold text-slate-700 line-clamp-2 leading-tight mt-1">{pickupAddress || "Select on map..."}</div>
@@ -388,13 +403,17 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                   )}
 
                   {step === 'pickup' && (
-                    <div className="space-y-4 mt-auto">
+                    <div className="space-y-4 mt-auto pb-4">
                       <div className="flex gap-2 p-2 bg-slate-50 rounded-2xl border border-slate-200 focus-within:border-blue-400 transition-all shadow-inner">
-                        <input type="text" placeholder="Search pickup location..." value={pickupAddress} onChange={(e) => { setPickupAddress(e.target.value); setPickup(null); }} className="bg-transparent border-none flex-1 p-3 outline-none font-bold text-slate-700 placeholder:text-slate-400" />
+                        <input type="text" placeholder="Search pickup location..." value={pickupAddress} 
+                          onFocus={() => setIsSheetExpanded(true)} // Open sheet when typing
+                          onChange={(e) => { setPickupAddress(e.target.value); setPickup(null); }} 
+                          className="bg-transparent border-none flex-1 p-3 outline-none font-bold text-slate-700 placeholder:text-slate-400" />
                         <button onClick={async () => {
                             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pickupAddress)}`);
                             const data = await res.json();
                             if (data.length > 0) setPickup([parseFloat(data[0].lat), parseFloat(data[0].lon)]); 
+                            setIsSheetExpanded(false); // Close sheet after finding
                           }} className="p-3 bg-white rounded-xl shadow-sm text-xl active:scale-90"
                         >🔍</button>
                       </div>
@@ -408,6 +427,7 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                                 const data = await res.json();
                                 setPickupAddress(data.display_name.split(",")[0] + ", " + data.display_name.split(",")[1]);
                               } catch (e) { setPickupAddress("GPS Location Selected"); }
+                              setIsSheetExpanded(false); // Close sheet so they can see map
                             });
                           }
                         }} className="w-full p-4 rounded-2xl bg-blue-50 text-blue-600 font-black flex items-center justify-center gap-2 active:scale-95 transition-all border border-blue-100">
@@ -415,7 +435,7 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                       </button>
 
                       {pickup && (
-                        <button className="w-full p-5 mt-2 rounded-2xl bg-slate-800 text-white font-black text-lg shadow-xl hover:bg-slate-700 active:scale-95 transition-all animate-fade-in-up" onClick={() => setStep('dropoff')}>
+                        <button className="w-full p-5 mt-2 rounded-2xl bg-slate-800 text-white font-black text-lg shadow-xl hover:bg-slate-700 active:scale-95 transition-all animate-fade-in-up" onClick={() => {setStep('dropoff'); setIsSheetExpanded(true);}}>
                           Confirm Pickup
                         </button>
                       )}
@@ -423,13 +443,17 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                   )}
 
                   {step === 'dropoff' && (
-                    <div className="space-y-4 mt-auto">
+                    <div className="space-y-4 mt-auto pb-4">
                       <div className="flex gap-2 p-2 bg-slate-50 rounded-2xl border border-slate-200 focus-within:border-blue-400 transition-all shadow-inner">
-                        <input type="text" placeholder="Search destination..." value={dropoffAddress} onChange={(e) => { setDropoffAddress(e.target.value); setOffer(null); setDropoff(null); }} className="bg-transparent border-none flex-1 p-3 outline-none font-bold text-slate-700 placeholder:text-slate-400" />
+                        <input type="text" placeholder="Search destination..." value={dropoffAddress} 
+                          onFocus={() => setIsSheetExpanded(true)} // Open sheet when typing
+                          onChange={(e) => { setDropoffAddress(e.target.value); setOffer(null); setDropoff(null); }} 
+                          className="bg-transparent border-none flex-1 p-3 outline-none font-bold text-slate-700 placeholder:text-slate-400" />
                         <button onClick={async () => {
                             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropoffAddress)}`);
                             const data = await res.json();
                             if (data.length > 0) { setDropoff([parseFloat(data[0].lat), parseFloat(data[0].lon)]); setOffer(null); }
+                            setIsSheetExpanded(false); // Close sheet after finding
                           }} className="p-3 bg-white rounded-xl shadow-sm text-xl active:scale-90"
                         >🔍</button>
                       </div>
@@ -469,7 +493,7 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
                   )}
 
                   {status === 'completed' && (
-                    <div className="text-center w-full mt-auto bg-white p-6 rounded-[30px] border border-slate-100 shadow-xl">
+                    <div className="text-center w-full mt-auto bg-white p-6 rounded-[30px] border border-slate-100 shadow-xl pb-10">
                       <h2 className="text-3xl font-black text-green-500 mb-6 italic">🏁 Finished!</h2>
                       {!isRated ? (
                         <div className="mb-6 p-6 bg-slate-50 rounded-[24px] text-center border border-slate-100 shadow-inner">
@@ -495,7 +519,7 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
 
           {/* TAB 2: ORDERS */}
           {currentTab === 'orders' && (
-            <div className="animate-fade-in-up">
+            <div className="animate-fade-in-up mt-4 md:mt-0">
               <h2 className="text-3xl font-black text-slate-800 mb-6">My Trips</h2>
               {loadingHistory ? (
                 <div className="text-center p-10 text-slate-400 font-bold">Loading...</div>
@@ -525,7 +549,7 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
 
           {/* TAB 3: PROFILE */}
           {currentTab === 'profile' && (
-            <div className="flex flex-col items-center w-full animate-fade-in-up">
+            <div className="flex flex-col items-center w-full animate-fade-in-up mt-4 md:mt-0">
               {profileView === 'main' && (
                 <div className="w-full flex flex-col items-center">
                   <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 rounded-full mb-4 flex items-center justify-center text-3xl shadow-inner border-4 border-white">
@@ -609,7 +633,7 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
 
           {/* TAB 4: HELP */}
           {currentTab === 'help' && (
-            <div className="animate-fade-in-up">
+            <div className="animate-fade-in-up mt-4 md:mt-0">
               <h2 className="text-3xl font-black text-slate-800 mb-6">Support</h2>
               <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-6 rounded-[24px] shadow-lg mb-8 relative overflow-hidden">
                 <div className="relative z-10">
@@ -647,10 +671,8 @@ await api.post(`/api/rides/${orderId}/rate_driver/`, { rating: rating, feedback:
         </div>
       </div>
 
-      {/* ========================================= */}
-      {/* MOBILE BOTTOM NAVIGATION */}
-      {/* ========================================= */}
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)] z-[3000] pointer-events-auto transition-transform duration-300 ${step !== 'selection' && currentTab === 'home' ? 'translate-y-full' : 'translate-y-0'}`}>
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)] z-[3000] pointer-events-auto transition-transform duration-300 ${step !== 'selection' && currentTab === 'home' ? 'translate-y-full' : 'translate-y-0'}`}>
         <div className="flex justify-around items-center h-16 max-w-md mx-auto px-2">
           <MobileNavBtn id="home" icon={<Icons.NavHome />} label="Book" />
           <MobileNavBtn id="orders" icon={<Icons.NavOrders />} label="Trips" />
@@ -674,15 +696,15 @@ function App() {
 
   const handleLoginSuccess = (username, token) => {
     localStorage.setItem('access_token', token);
-    localStorage.setItem('indora_customer_username', username);
+    localStorage.setItem('parceel_customer_username', username);
     setIsLoggedIn(true);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
-    localStorage.removeItem('indora_step');
-    localStorage.removeItem('indora_order_id');
-    localStorage.removeItem('indora_customer_username');
+    localStorage.removeItem('parceel_step');
+    localStorage.removeItem('parceel_order_id');
+    localStorage.removeItem('parceel_customer_username');
     setIsLoggedIn(false);
     window.location.reload();
   };
