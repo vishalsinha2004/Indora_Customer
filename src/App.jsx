@@ -11,30 +11,125 @@ import Book from './components/Book';
 import Trips from './components/Trips';
 import Profile from './components/Profile';
 import Help from './components/Help';
-import SplashScreen from './components/SplashScreen'; // <--- IMPORT SPLASH SCREEN
+import SplashScreen from './components/SplashScreen'; 
 
 // --- PREMIUM SOFT ICONS (Neutral Black) ---
 const Icons = {
   TwoWheeler: () => (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-900">
-      <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M12 17h5l2-5h-9l-2-5H3l2 5h4"/>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900">
+      <defs>
+        <filter id="premium-shadow-scooter" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#dc2626" floodOpacity="0.15" />
+        </filter>
+      </defs>
+      <g filter="url(#premium-shadow-scooter)">
+        {/* Wheels (Slightly smaller and thicker for a scooter look) */}
+        <circle cx="18" cy="16" r="3.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="18" cy="16" r="1.5" fill="#dc2626"/>
+        <circle cx="6" cy="16" r="3.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="6" cy="16" r="1.5" fill="#dc2626"/>
+        
+        {/* Front Steering Column / Fork */}
+        <path d="M18 16L16 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        
+        {/* Solid Front Shield */}
+        <path d="M14 15L15.5 9C16 8 17 8 17 8L16 15Z" fill="white" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        
+        {/* Solid Floorboard & Rear Engine Body */}
+        <path d="M14 15H5c-1.5 0-2.5-1-2-2.5l.5-1.5h7l3.5 4z" fill="white" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        
+        {/* Handlebars */}
+        <path d="M14 9l2-1 1.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        
+        {/* Red Headlight Accent */}
+        <circle cx="17.5" cy="9.5" r="1" fill="#dc2626"/>
+        
+        {/* Red Premium Rounded Seat */}
+        <path d="M3.5 11c0-1.5 1-2 2-2h4c1 0 1.5.5 1 2z" fill="#dc2626" stroke="#dc2626" strokeWidth="1" strokeLinejoin="round"/>
+      </g>
     </svg>
-  ),
+  ),  
+  
   Truck: () => (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-900">
-      <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900">
+      <defs>
+        <filter id="premium-shadow-truck" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#dc2626" floodOpacity="0.15" />
+        </filter>
+      </defs>
+      <g filter="url(#premium-shadow-truck)">
+        {/* Cargo Box with Red Accent Fill */}
+        <rect x="2" y="5" width="12" height="11" rx="1" fill="#dc2626" opacity="0.1"/>
+        <rect x="2" y="5" width="12" height="11" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+        {/* Front Cabin */}
+        <path d="M14 8h3.5l3.5 4v4h-7V8z" fill="white" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        <path d="M14 12h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        {/* Wheels */}
+        <circle cx="5.5" cy="17.5" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="5.5" cy="17.5" r="1" fill="#dc2626"/>
+        <circle cx="17.5" cy="17.5" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="17.5" cy="17.5" r="1" fill="#dc2626"/>
+      </g>
     </svg>
   ),
+  
   Package: () => (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-900">
-      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900">
+      <defs>
+        <filter id="premium-shadow-box" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="5" stdDeviation="3" floodColor="#dc2626" floodOpacity="0.18" />
+        </filter>
+      </defs>
+      <g filter="url(#premium-shadow-box)">
+        {/* Isometric Top */}
+        <path d="M12 3l8 4.5-8 4.5-8-4.5L12 3z" fill="#f4f4f5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        {/* Left Side */}
+        <path d="M4 7.5v9L12 21v-9l-8-4.5z" fill="white" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        {/* Right Side */}
+        <path d="M20 7.5v9L12 21v-9l8-4.5z" fill="#fafafa" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        {/* Premium Red Branding Tape */}
+        <path d="M16 5.25l-8 4.5" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M8 18.75v-9" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/>
+      </g>
     </svg>
   ),
+  
   Key: () => (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
-      <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900">
+      <defs>
+        <filter id="premium-shadow-key" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#000000" floodOpacity="0.15" />
+        </filter>
+      </defs>
+      <g filter="url(#premium-shadow-key)">
+        {/* Key Blade */}
+        <path d="M12 12l-8 8v3h3v-2h2v-2h2l1-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {/* Modern Car Fob */}
+        <rect x="11" y="4" width="9" height="11" rx="3" fill="white" stroke="currentColor" strokeWidth="1.5" transform="rotate(45 15.5 9.5)"/>
+        {/* Fob Button */}
+        <circle cx="16" cy="8" r="1.5" fill="#dc2626"/>
+        <path d="M13.5 10.5l2-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </g>
     </svg>
   ),
+  
+  Custom: () => (
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900">
+      <defs>
+        <filter id="premium-shadow-custom" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="5" stdDeviation="3" floodColor="#dc2626" floodOpacity="0.25" />
+        </filter>
+      </defs>
+      <g filter="url(#premium-shadow-custom)">
+        {/* Realistic Shield Badge */}
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="white" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        {/* Express Lightning Bolt */}
+        <path d="M13 7l-4 6h3l-1 5 5-7h-3l2-4z" fill="#dc2626" stroke="#dc2626" strokeWidth="1" strokeLinejoin="round"/>
+      </g>
+    </svg>
+  ),
+
+  // (Keep your existing NavHome, NavOrders, NavProfile, and NavHelp below this!)
   NavHome: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   NavOrders: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
   NavProfile: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
@@ -45,9 +140,6 @@ function CustomerHome({ onLogout }) {
   const [currentTab, setCurrentTab] = useState('home'); 
   const [profileView, setProfileView] = useState('main'); 
   const [expandedFaq, setExpandedFaq] = useState(null);
-  
-  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
-  const touchStartY = useRef(0);
 
   const [userInfo, setUserInfo] = useState({
     name: localStorage.getItem('parceel_customer_username') || "Customer",
@@ -79,10 +171,9 @@ function CustomerHome({ onLogout }) {
 
   const [hasPaid, setHasPaid] = useState(false);
 
-  useEffect(() => {
-    if (step !== 'selection') setIsSheetExpanded(true);
-    else setIsSheetExpanded(false);
-  }, [step]);
+  // --- SMART FULLSCREEN LOGIC ---
+  // Returns true if we are on Profile, Trips, Help, OR the initial Selection screen
+  const isFullScreen = currentTab !== 'home' || step === 'selection';
 
   useEffect(() => { localStorage.setItem('parceel_step', step); }, [step]);
   useEffect(() => {
@@ -105,22 +196,13 @@ function CustomerHome({ onLogout }) {
     }
   }, [currentTab]);
 
-  const handleTouchStart = (e) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e) => {
-    const touchEndY = e.changedTouches[0].clientY;
-    const distance = touchStartY.current - touchEndY;
-    if (distance > 40) setIsSheetExpanded(true);
-    else if (distance < -40) setIsSheetExpanded(false);
-  };
-
   const services = [
     { id: '2-wheeler', name: '2 Wheeler', icon: <Icons.TwoWheeler />, active: true, desc: 'Fast & Pocket Friendly' },
     { id: 'trucks', name: 'Trucks', icon: <Icons.Truck />, active: true, desc: 'Heavy Duty Moving' },
     { id: 'packers', name: 'Packers & Movers', icon: <Icons.Package />, active: true, desc: 'Professional Relocation' },
     { id: 'rent', name: 'Rent Vehicle', icon: <Icons.Key />, active: false, desc: 'Coming Soon' },
+    { id: ' Custom Vehicle', name: 'Custom Vehicle', icon: <Icons.Custom />, active: false, desc: 'Coming Soon' },
+
   ];
 
   const handleServiceSelect = (service) => {
@@ -137,7 +219,6 @@ function CustomerHome({ onLogout }) {
         dropoff_lat: dropoff[0], dropoff_lng: dropoff[1]
       });
       setOffer(response.data);
-      setIsSheetExpanded(true);
     } catch (error) { alert(`❌ Error: ${error.response?.data?.detail || "Could not calculate price"}`); }
   };
 
@@ -153,7 +234,6 @@ function CustomerHome({ onLogout }) {
       });
       setOrderId(response.data.id);
       setStep('finished');
-      setIsSheetExpanded(false);
     } catch (error) {
       alert("❌ Failed to book ride. Please try again.");
     }
@@ -161,7 +241,6 @@ function CustomerHome({ onLogout }) {
 
   const payForRide = async () => {
     if (!offer || !orderId) return;
-    
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SHfqRqFecIslSG", 
       amount: parseInt(offer.price * 100), 
@@ -182,7 +261,6 @@ function CustomerHome({ onLogout }) {
         }
       }
     };
-    
     const rzp = new window.Razorpay(options);
     rzp.on('payment.failed', function (response){
         alert("Payment Failed. You can try again or Pay with Cash.");
@@ -266,44 +344,36 @@ function CustomerHome({ onLogout }) {
   return (
     <div className="h-screen w-screen bg-zinc-50 font-sans flex overflow-hidden relative selection:bg-red-200 selection:text-red-900">
       
-      <div className="absolute inset-0 z-0 md:left-[420px] md:w-[calc(100vw-420px)] w-full transition-all duration-500 bg-zinc-200">
+      {/* MAP LAYER: Hidden on full-screen tabs. Takes 40vh when booking! */}
+      <div className={`absolute top-0 left-0 right-0 z-0 transition-opacity duration-500 bg-zinc-200 
+        ${isFullScreen ? 'hidden md:block md:w-[calc(100vw-420px)] md:h-full md:left-[420px]' : 'h-[40vh] md:h-full md:w-[calc(100vw-420px)] md:left-[420px]'}`}
+      >
         <IndoraMap 
           pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff}
           driverLocation={driverLocation} pickupAddress={pickupAddress} dropoffAddress={dropoffAddress}
           setPickupAddress={setPickupAddress} setDropoffAddress={setDropoffAddress}
           step={step} setStep={setStep} routeGeometry={offer ? offer.route_geometry : null}
+          vehicleType={vehicleType}
         />
       </div>
 
-      <div className="md:hidden absolute top-6 left-6 right-6 flex justify-between items-center z-[1000] pointer-events-auto">
-         {step === 'selection' && currentTab === 'home' && (
-            <h1 className="text-3xl font-black text-red-600 italic drop-shadow-sm bg-white/70 backdrop-blur-xl border border-white/50 px-6 py-2.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)]">PARCEEL</h1>
-         )}
-         {step !== 'selection' && currentTab === 'home' && (
-           <button onClick={() => { setStep('selection'); setOrderId(null); setOffer(null); setDropoff(null); }} className="bg-white/80 backdrop-blur-xl border border-white/50 p-4 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-zinc-900 hover:text-red-600 active:scale-90 transition-all">
-             <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m7 7-7-7 7-7"/></svg>
-           </button>
-         )}
-      </div>
-
+      {/* --- SMART DYNAMIC PANEL --- */}
       <div className={`
-        fixed bottom-[72px] md:bottom-0 left-0 w-full z-[2000] flex flex-col pointer-events-auto
+        fixed md:bottom-0 left-0 w-full z-[2000] flex flex-col pointer-events-auto
         md:relative md:w-[420px] md:h-full md:max-h-full
         bg-white/75 backdrop-blur-3xl md:bg-white/85
-        rounded-t-[36px] md:rounded-none
+        md:rounded-none
         shadow-[0_-20px_50px_rgba(0,0,0,0.06)] md:shadow-[15px_0_50px_rgba(0,0,0,0.04)]
         border-t border-white/60 md:border-t-0 md:border-r transition-all duration-400 ease-out
-        ${isSheetExpanded ? 'h-[85vh] md:h-full' : 'h-[50vh] md:h-full'} 
+        ${isFullScreen ? 'top-0 h-[calc(100vh-64px)] pt-6 rounded-none' : 'bottom-[64px] h-[60vh] rounded-t-[36px]'} 
       `}>
         
-        <div 
-          className="md:hidden w-full pt-5 pb-3 flex justify-center items-center cursor-grab active:cursor-grabbing shrink-0"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onClick={() => setIsSheetExpanded(!isSheetExpanded)}
-        >
-          <div className="w-16 h-1.5 bg-zinc-300/80 rounded-full"></div>
-        </div>
+        {/* MOBILE FULL-SCREEN BRANDING HEADER (Inside the panel so it doesn't overlap!) */}
+        {isFullScreen && (
+          <div className="md:hidden px-6 pb-2 shrink-0 animate-fade-in">
+             <h1 className="text-3xl font-black text-red-600 italic tracking-tighter drop-shadow-sm">PARCEEL</h1>
+          </div>
+        )}
 
         <div className="hidden md:flex flex-col p-8 pb-6 shrink-0 border-b border-zinc-200/50 bg-white/40">
            <h1 className="text-4xl font-black text-red-600 italic tracking-tighter mb-6 cursor-pointer drop-shadow-sm" onClick={() => {setCurrentTab('home'); setStep('selection');}}>PARCEEL</h1>
@@ -315,12 +385,13 @@ function CustomerHome({ onLogout }) {
            </div>
         </div>
 
-        <div className={`flex-1 overflow-y-auto px-6 py-2 md:px-8 md:py-8 pb-[100px] md:pb-8 ${hideScrollbar}`}>
+        {/* CONTENT AREA: Hidden scroll on booking steps, active scroll on full screen */}
+        <div className={`flex-1 px-5 md:px-8 py-2 md:py-8 pb-4 md:pb-8 ${!isFullScreen ? 'overflow-hidden' : `overflow-y-auto ${hideScrollbar}`}`}>
           
           {currentTab === 'home' && (
             <Book 
               step={step} setStep={setStep} services={services} handleServiceSelect={handleServiceSelect} vehicleType={vehicleType}
-              pickupAddress={pickupAddress} setPickupAddress={setPickupAddress} setPickup={setPickup} setIsSheetExpanded={setIsSheetExpanded}
+              pickupAddress={pickupAddress} setPickupAddress={setPickupAddress} setPickup={setPickup}
               dropoffAddress={dropoffAddress} setDropoffAddress={setDropoffAddress} setDropoff={setDropoff} setOffer={setOffer}
               pickup={pickup} dropoff={dropoff} offer={offer} fetchPrice={fetchPrice} bookRide={bookRide} status={status}
               driverName={driverName} driverPhone={driverPhone} isRated={isRated} rating={rating} setRating={setRating}
@@ -329,10 +400,8 @@ function CustomerHome({ onLogout }) {
             />
           )}
 
-          {currentTab === 'orders' && (
-            <Trips loadingHistory={loadingHistory} orderHistory={orderHistory} />
-          )}
-
+          {currentTab === 'orders' && <Trips loadingHistory={loadingHistory} orderHistory={orderHistory} />}
+          
           {currentTab === 'profile' && (
             <Profile 
               profileView={profileView} setProfileView={setProfileView} userInfo={userInfo} 
@@ -340,14 +409,12 @@ function CustomerHome({ onLogout }) {
             />
           )}
 
-          {currentTab === 'help' && (
-            <Help expandedFaq={expandedFaq} setExpandedFaq={setExpandedFaq} />
-          )}
+          {currentTab === 'help' && <Help expandedFaq={expandedFaq} setExpandedFaq={setExpandedFaq} />}
 
         </div>
       </div>
 
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-3xl border-t border-white/60 shadow-[0_-15px_40px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)] z-[3000] pointer-events-auto transition-transform duration-400 ease-out ${step !== 'selection' && currentTab === 'home' ? 'translate-y-full' : 'translate-y-0'}`}>
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-3xl border-t border-white/60 shadow-[0_-15px_40px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)] z-[3000] pointer-events-auto transition-transform duration-400 ease-out`}>
         <div className="flex justify-around items-center h-16 max-w-md mx-auto px-2">
           <MobileNavBtn id="home" icon={<Icons.NavHome />} label="Book" />
           <MobileNavBtn id="orders" icon={<Icons.NavOrders />} label="Trips" />
@@ -364,15 +431,27 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
   
-  // --- FIXED: Use sessionStorage to only show splash ONCE per tab session ---
   const [showSplash, setShowSplash] = useState(() => {
-    return sessionStorage.getItem('parceel_splash_seen') !== 'true';
+    return sessionStorage.getItem('server_awake') !== 'true';
   });
+  
+  const [isServerReady, setIsServerReady] = useState(false);
 
-  const handleSplashComplete = () => {
-    sessionStorage.setItem('parceel_splash_seen', 'true'); // Save that they saw it
-    setShowSplash(false); // Hide the splash screen
-  };
+  useEffect(() => {
+    if (!showSplash) return;
+
+    const wakeUpServer = async () => {
+      try {
+        await api.get('/api/rides/'); 
+      } catch (error) {
+      } finally {
+        setIsServerReady(true); 
+        sessionStorage.setItem('server_awake', 'true'); 
+      }
+    };
+
+    wakeUpServer();
+  }, [showSplash]);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -394,26 +473,22 @@ function App() {
     window.location.reload();
   };
 
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} isServerReady={isServerReady} />;
+  }
+
+  if (!isLoggedIn) {
+    return showLogin ? 
+      <Login onLoginSuccess={handleLoginSuccess} switchToSignup={() => setShowLogin(false)} /> : 
+      <Signup onSignupSuccess={() => setShowLogin(true)} switchToLogin={() => setShowLogin(true)} />;
+  }
+
   return (
-    <>
-      {/* OVERLAY SPLASH SCREEN */}
-      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-      
-      {/* REST OF THE APP */}
-      {!isLoggedIn ? (
-        showLogin ? (
-          <Login onLoginSuccess={handleLoginSuccess} switchToSignup={() => setShowLogin(false)} />
-        ) : (
-          <Signup onSignupSuccess={() => setShowLogin(true)} switchToLogin={() => setShowLogin(true)} />
-        )
-      ) : (
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<CustomerHome onLogout={handleLogout} />} />
-          </Routes>
-        </BrowserRouter>
-      )}
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<CustomerHome onLogout={handleLogout} />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

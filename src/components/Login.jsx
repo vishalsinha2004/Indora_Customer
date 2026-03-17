@@ -59,7 +59,8 @@ const Login = ({ onLoginSuccess, switchToSignup }) => {
           <button 
             type="submit" 
             disabled={loading} 
-            className="mt-4 p-4 rounded-2xl bg-red-600 text-white font-black text-lg shadow-[0_8px_20px_rgba(220,38,38,0.25)] hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 tracking-wide"
+            className="mt-4 p-4 rounded-2xl bg-zinc-900 text-white font-black text-lg shadow-[0_10px_25px_rgba(0,0,0,0.2)] hover:bg-black active:scale-95 transition-all tracking-wide"
+          
           >
             {loading ? 'Logging in...' : 'Login to Parceel'}
           </button>
